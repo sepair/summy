@@ -18,8 +18,8 @@ app = Flask(__name__)
 ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN')
 APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
 
-# Verify token for webhook (you'll need to set this)
-VERIFY_TOKEN = "your_verify_token_here"
+# Verify token for webhook (set via environment variable)
+VERIFY_TOKEN = os.getenv('VERIFY_TOKEN', 'summy_webhook_2024_secure')
 
 class InstagramMessageHandler:
     def __init__(self, access_token):
