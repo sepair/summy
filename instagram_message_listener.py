@@ -165,6 +165,54 @@ def generate_auto_reply(incoming_message, username):
     else:
         return f"Hi {username}! Thanks for your message. I've received it and will respond soon!"
 
+@app.route('/', methods=['GET'])
+def landing_page():
+    """Simple landing page"""
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Instagram Bot</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+            .container {
+                text-align: center;
+                padding: 2rem;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+            }
+            h1 {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+            }
+            p {
+                font-size: 1.2rem;
+                opacity: 0.9;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Hello World</h1>
+            <p>Instagram Auto-Reply Bot is Running</p>
+            <p>🤖 Ready to respond to messages</p>
+        </div>
+    </body>
+    </html>
+    """
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
