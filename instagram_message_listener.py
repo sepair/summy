@@ -83,18 +83,45 @@ def handle_webhook():
     """Handle incoming webhook from Instagram"""
     try:
         data = request.get_json()
-        logger.info(f"Received webhook data: {json.dumps(data, indent=2)}")
+        
+        # Enhanced logging to debug webhook issues
+        logger.info("=" * 50)
+        logger.info("WEBHOOK RECEIVED")
+        logger.info("=" * 50)
+        logger.info(f"Raw webhook data: {json.dumps(data, indent=2)}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"Request URL: {request.url}")
+        
+        # Check if data exists
+        if not data:
+            logger.warning("No data received in webhook")
+            return jsonify({'status': 'no_data'}), 200
         
         # Process each entry in the webhook
-        for entry in data.get('entry', []):
-            # Process messaging events
-            for messaging_event in entry.get('messaging', []):
+        entries = data.get('entry', [])
+        logger.info(f"Number of entries: {len(entries)}")
+        
+        for i, entry in enumerate(entries):
+            logger.info(f"Processing entry {i+1}: {json.dumps(entry, indent=2)}")
+            
+            # Check for messaging events
+            messaging_events = entry.get('messaging', [])
+            logger.info(f"Number of messaging events in entry {i+1}: {len(messaging_events)}")
+            
+            for j, messaging_event in enumerate(messaging_events):
+                logger.info(f"Processing messaging event {j+1}: {json.dumps(messaging_event, indent=2)}")
                 process_message_event(messaging_event)
         
+        logger.info("Webhook processing completed successfully")
+        logger.info("=" * 50)
         return jsonify({'status': 'success'}), 200
     
     except Exception as e:
         logger.error(f"Error processing webhook: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
 
 def process_message_event(messaging_event):
