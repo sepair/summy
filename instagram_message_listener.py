@@ -177,4 +177,5 @@ if __name__ == '__main__':
     logger.info("3. Ensure your app has proper permissions for messaging")
     
     # Run the Flask app
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port, debug=False)
