@@ -3,7 +3,8 @@ import requests
 import json
 import time
 import threading
-from flask import Flask, jsonify
+from datetime import datetime
+from flask import Flask, jsonify, send_file
 from dotenv import load_dotenv
 import logging
 
@@ -117,6 +118,18 @@ class InstagramMessagingBot:
             logger.error(f"Error getting user info: {e}")
             return {'id': user_id, 'username': 'User'}
     
+    def log_message_to_file(self, username, message_text, reply_text, timestamp):
+        """Log message and reply to a text file"""
+        try:
+            log_entry = f"[{timestamp}] FROM: {username} | MESSAGE: {message_text} | REPLY: {reply_text}\n"
+            
+            with open('messages.txt', 'a', encoding='utf-8') as f:
+                f.write(log_entry)
+            
+            logger.info(f"Message logged to file: {username}")
+        except Exception as e:
+            logger.error(f"Error logging message to file: {e}")
+    
     def generate_auto_reply(self, username):
         """Generate a simple automatic reply"""
         return f"Hi {username}! Thanks for your message. I've received it and will get back to you soon! 🤖"
@@ -158,6 +171,10 @@ class InstagramMessagingBot:
                 # Generate and send reply
                 reply_text = self.generate_auto_reply(username)
                 logger.info(f"Sending reply: {reply_text}")
+                
+                # Log message to file
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.log_message_to_file(username, message_text, reply_text, timestamp)
                 
                 result = self.send_message(conversation_id, reply_text)
                 if result:
@@ -275,6 +292,28 @@ def test_conversations():
         'conversations_count': len(conversations),
         'conversations': conversations
     }), 200
+
+@app.route('/messages', methods=['GET'])
+def view_messages():
+    """View the messages log file"""
+    try:
+        if os.path.exists('messages.txt'):
+            return send_file('messages.txt', as_attachment=False, mimetype='text/plain')
+        else:
+            return "No messages logged yet.", 200
+    except Exception as e:
+        return f"Error reading messages file: {e}", 500
+
+@app.route('/messages/download', methods=['GET'])
+def download_messages():
+    """Download the messages log file"""
+    try:
+        if os.path.exists('messages.txt'):
+            return send_file('messages.txt', as_attachment=True, download_name='instagram_messages.txt')
+        else:
+            return "No messages logged yet.", 404
+    except Exception as e:
+        return f"Error downloading messages file: {e}", 500
 
 if __name__ == '__main__':
     # Check if required environment variables are set

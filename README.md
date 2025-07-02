@@ -114,6 +114,8 @@ The app is automatically deployed to Heroku when changes are pushed to the main 
 - `GET /health` - Health check with polling status
 - `GET /stats` - Bot statistics (messages processed, etc.)
 - `GET /test-conversations` - Test conversations API access
+- `GET /messages` - View all logged messages in browser
+- `GET /messages/download` - Download messages log file
 
 ## ⚡ Key Differences from Webhook Approach
 
