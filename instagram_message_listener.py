@@ -257,24 +257,8 @@ def process_message_event(messaging_event):
         message_handler.send_message(sender_id, reply_text)
 
 def generate_auto_reply(incoming_message, username):
-    """Generate an automatic reply based on the incoming message"""
-    incoming_message_lower = incoming_message.lower()
-    
-    # Customize these responses based on your needs
-    if 'hello' in incoming_message_lower or 'hi' in incoming_message_lower:
-        return f"Hello {username}! Thanks for reaching out. How can I help you today?"
-    
-    elif 'help' in incoming_message_lower:
-        return f"Hi {username}! I'm here to help. What do you need assistance with?"
-    
-    elif 'thank' in incoming_message_lower:
-        return f"You're welcome, {username}! Feel free to reach out anytime."
-    
-    elif '?' in incoming_message:
-        return f"Hi {username}! Thanks for your question. I'll get back to you as soon as possible!"
-    
-    else:
-        return f"Hi {username}! Thanks for your message. I've received it and will respond soon!"
+    """Generate a simple automatic reply"""
+    return f"Hi {username}! Thanks for your message. I've received it and will get back to you soon! 🤖"
 
 @app.route('/', methods=['GET'])
 def landing_page():

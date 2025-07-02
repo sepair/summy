@@ -1,111 +1,134 @@
-# Instagram Message Auto-Reply Bot
+# Instagram Auto-Reply Bot
 
-This Python application listens for incoming Instagram messages and automatically replies to them using the Instagram Graph API.
+A simple Instagram bot that automatically replies to direct messages using the official Instagram Graph API.
 
-## Features
+## 🚀 Live App
 
-- Listens for incoming Instagram messages via webhooks
-- Automatically replies with customized messages based on content
-- Personalizes responses using the sender's username
-- Includes health check and test endpoints
-- Comprehensive logging
+**URL**: https://summy-9f6d7e440dad.herokuapp.com/
 
-## Setup Instructions
+## 📱 What It Does
 
-### 1. Install Dependencies
+- Receives Instagram direct messages via webhook
+- Automatically replies with a friendly message
+- Works with Instagram Business/Creator accounts
+- Uses official Instagram Graph API v19.0
 
+## 🤖 Bot Response
+
+The bot sends a simple, generic reply to any message:
+
+> "Hi [username]! Thanks for your message. I've received it and will get back to you soon! 🤖"
+
+## 🔧 Setup Requirements
+
+### 1. Instagram Account
+- Must be a **Business** or **Creator** account (not personal)
+- Account: `get_voyage`
+
+### 2. Facebook App Configuration
+1. Go to [Facebook Developers Console](https://developers.facebook.com/)
+2. Create/configure your app with Instagram product
+3. Set webhook URL: `https://summy-9f6d7e440dad.herokuapp.com/webhook`
+4. Set verify token: `summy_webhook_2024_secure`
+5. Subscribe to `messages` events
+
+### 3. Required Permissions
+- `instagram_basic`
+- `instagram_manage_messages`
+- `pages_messaging` (if using Facebook Pages)
+
+## 🧪 Testing
+
+### Health Check
 ```bash
-pip install -r requirements.txt
+curl https://summy-9f6d7e440dad.herokuapp.com/health
 ```
 
-### 2. Configure Environment Variables
-
-The `.env` file is already created with your Instagram API credentials:
-- `INSTAGRAM_ACCESS_TOKEN`: Your Instagram access token
-- `INSTAGRAM_APP_SECRET`: Your Instagram app secret
-
-### 3. Update Webhook Verification Token
-
-Edit `instagram_message_listener.py` and replace `"your_verify_token_here"` with a secure token of your choice:
-
-```python
-VERIFY_TOKEN = "your_secure_verify_token_123"
+### Webhook Verification
+```bash
+curl "https://summy-9f6d7e440dad.herokuapp.com/webhook?hub.mode=subscribe&hub.verify_token=summy_webhook_2024_secure&hub.challenge=test"
 ```
 
-### 4. Instagram App Configuration
-
-1. Go to your Instagram App in Facebook Developers Console
-2. Add webhook URL: `https://your-domain.com/webhook`
-3. Set the verify token to match what you set in step 3
-4. Subscribe to `messages` webhook events
-5. Ensure your app has the following permissions:
-   - `instagram_basic`
-   - `instagram_manage_messages`
-
-### 5. Run the Application
-
+### Test Message Processing
 ```bash
-python instagram_message_listener.py
-```
-
-The server will start on `http://localhost:5001`
-
-## API Endpoints
-
-### Webhook Endpoints
-- `GET /webhook` - Webhook verification
-- `POST /webhook` - Receive Instagram message events
-
-### Utility Endpoints
-- `GET /health` - Health check
-- `POST /test-send` - Test sending a message manually
-
-### Test Sending a Message
-
-```bash
-curl -X POST http://localhost:5001/test-send \
+curl -X POST https://summy-9f6d7e440dad.herokuapp.com/webhook \
   -H "Content-Type: application/json" \
-  -d '{"recipient_id": "USER_ID", "message": "Test message"}'
+  -d '{
+    "object": "instagram",
+    "entry": [
+      {
+        "id": "instagram_account_id",
+        "messaging": [
+          {
+            "sender": {"id": "test_user"},
+            "recipient": {"id": "instagram_account_id"},
+            "message": {"text": "Hello"}
+          }
+        ]
+      }
+    ]
+  }'
 ```
 
-## Auto-Reply Logic
+## 📝 Environment Variables
 
-The bot responds differently based on message content:
+Required environment variables (configured in `.env`):
+- `INSTAGRAM_ACCESS_TOKEN`: Your Instagram access token
+- `INSTAGRAM_APP_SECRET`: Your app secret
+- `VERIFY_TOKEN`: Webhook verification token
 
-- **Greetings** ("hello", "hi") → Personalized greeting
-- **Help requests** ("help") → Assistance offer
-- **Thanks** ("thank") → Acknowledgment
-- **Questions** (contains "?") → Promise to respond
-- **Default** → Generic acknowledgment
+## 🔍 Troubleshooting
 
-## Customization
+### Not Receiving Messages?
 
-You can modify the `generate_auto_reply()` function to customize responses based on your needs.
+1. **Development Mode**: Instagram apps in development mode only receive webhooks from test users
+   - Add test users in Facebook Developers Console → Roles → Test Users
+   - OR submit app for review to go live
 
-## Important Notes
+2. **Account Type**: Ensure Instagram account is Business/Creator (not personal)
 
-1. **Webhook URL**: You need a publicly accessible HTTPS URL for webhooks to work
-2. **Permissions**: Ensure your Instagram app has proper messaging permissions
-3. **Rate Limits**: Be aware of Instagram API rate limits
-4. **Security**: Keep your access tokens secure and never commit them to version control
+3. **Webhook Configuration**: Verify webhook is properly configured in Facebook Developers Console
 
-## Deployment
+4. **Permissions**: Ensure app has required Instagram messaging permissions
 
-For production deployment, consider:
-- Using a production WSGI server like Gunicorn
-- Setting up HTTPS with SSL certificates
-- Using environment variables for all sensitive data
-- Implementing proper error handling and monitoring
+## 📊 Monitoring
 
-## Troubleshooting
+Check Heroku logs to see webhook activity:
+```bash
+heroku logs --tail --app summy
+```
 
-1. **Webhook not receiving events**: Check your webhook URL and verification token
-2. **Messages not sending**: Verify your access token and app permissions
-3. **API errors**: Check the logs for detailed error messages
+Look for log messages like:
+```
+INSTAGRAM WEBHOOK RECEIVED
+Processing Instagram webhook...
+Received Instagram message from [USER_ID]: [MESSAGE]
+Generated reply: Hi [username]! Thanks for your message...
+```
 
-## Security Considerations
+## 🚀 Deployment
 
-- Never share your access tokens or app secrets
-- Use HTTPS for all webhook endpoints
-- Validate webhook signatures in production
-- Implement rate limiting to prevent abuse
+The app is automatically deployed to Heroku when changes are pushed to the main branch.
+
+## 📁 Project Structure
+
+```
+├── instagram_message_listener.py  # Main Flask application
+├── requirements.txt              # Python dependencies
+├── Procfile                     # Heroku deployment config
+├── runtime.txt                  # Python version
+├── .env                        # Environment variables
+└── README.md                   # This file
+```
+
+## 🔗 API Endpoints
+
+- `GET /` - Landing page
+- `GET /health` - Health check
+- `GET /webhook` - Webhook verification
+- `POST /webhook` - Webhook message processing
+- `POST /test-send` - Manual message sending (for testing)
+
+---
+
+**Status**: ✅ Live and operational with official Instagram Graph API
