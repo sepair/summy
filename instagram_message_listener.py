@@ -24,11 +24,12 @@ VERIFY_TOKEN = os.getenv('VERIFY_TOKEN', 'summy_webhook_2024_secure')
 class InstagramMessageHandler:
     def __init__(self, access_token):
         self.access_token = access_token
-        self.base_url = "https://graph.instagram.com/v18.0"
+        self.graph_api_url = "https://graph.facebook.com/v19.0"
     
     def send_message(self, recipient_id, message_text):
-        """Send a message to a specific user"""
-        url = f"{self.base_url}/me/messages"
+        """Send a message via Instagram Graph API"""
+        # Use the official Instagram Graph API endpoint
+        url = f"{self.graph_api_url}/me/messages"
         
         payload = {
             'recipient': {'id': recipient_id},
@@ -38,28 +39,45 @@ class InstagramMessageHandler:
         
         try:
             response = requests.post(url, json=payload)
-            response.raise_for_status()
-            logger.info(f"Message sent successfully to {recipient_id}")
-            return response.json()
+            logger.info(f"API Response Status: {response.status_code}")
+            logger.info(f"API Response: {response.text}")
+            
+            if response.status_code == 200:
+                logger.info(f"Message sent successfully to {recipient_id}")
+                return response.json()
+            else:
+                logger.error(f"Failed to send message. Status: {response.status_code}, Response: {response.text}")
+                return None
+                
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error sending message: {e}")
+            logger.error(f"Request error when sending message: {e}")
             return None
     
     def get_user_info(self, user_id):
-        """Get user information"""
-        url = f"{self.base_url}/{user_id}"
+        """Get user information via Graph API"""
+        url = f"{self.graph_api_url}/{user_id}"
         params = {
-            'fields': 'id,username',
+            'fields': 'id,name,first_name',
             'access_token': self.access_token
         }
         
         try:
             response = requests.get(url, params=params)
-            response.raise_for_status()
-            return response.json()
+            logger.info(f"User info API Response: {response.status_code} - {response.text}")
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                return {
+                    'id': user_data.get('id'),
+                    'username': user_data.get('name', user_data.get('first_name', 'User'))
+                }
+            else:
+                logger.error(f"Failed to get user info. Status: {response.status_code}")
+                return {'id': user_id, 'username': 'User'}
+                
         except requests.exceptions.RequestException as e:
             logger.error(f"Error getting user info: {e}")
-            return None
+            return {'id': user_id, 'username': 'User'}
 
 # Initialize message handler
 message_handler = InstagramMessageHandler(ACCESS_TOKEN)
@@ -80,42 +98,37 @@ def verify_webhook():
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
-    """Handle incoming webhook from Instagram"""
+    """Handle incoming webhook from Instagram Graph API"""
     try:
         data = request.get_json()
         
         # Enhanced logging to debug webhook issues
         logger.info("=" * 50)
-        logger.info("WEBHOOK RECEIVED")
+        logger.info("INSTAGRAM WEBHOOK RECEIVED")
         logger.info("=" * 50)
         logger.info(f"Raw webhook data: {json.dumps(data, indent=2)}")
         logger.info(f"Request headers: {dict(request.headers)}")
         logger.info(f"Request method: {request.method}")
         logger.info(f"Request URL: {request.url}")
+        logger.info(f"Content-Type: {request.headers.get('Content-Type', 'Not specified')}")
         
         # Check if data exists
         if not data:
             logger.warning("No data received in webhook")
             return jsonify({'status': 'no_data'}), 200
         
-        # Process each entry in the webhook
-        entries = data.get('entry', [])
-        logger.info(f"Number of entries: {len(entries)}")
+        # Check webhook object type
+        webhook_object = data.get('object')
+        logger.info(f"Webhook object type: {webhook_object}")
         
-        for i, entry in enumerate(entries):
-            logger.info(f"Processing entry {i+1}: {json.dumps(entry, indent=2)}")
-            
-            # Check for messaging events
-            messaging_events = entry.get('messaging', [])
-            logger.info(f"Number of messaging events in entry {i+1}: {len(messaging_events)}")
-            
-            for j, messaging_event in enumerate(messaging_events):
-                logger.info(f"Processing messaging event {j+1}: {json.dumps(messaging_event, indent=2)}")
-                process_message_event(messaging_event)
-        
-        logger.info("Webhook processing completed successfully")
-        logger.info("=" * 50)
-        return jsonify({'status': 'success'}), 200
+        # Process Instagram webhooks
+        if webhook_object == 'instagram':
+            return handle_instagram_webhook(data)
+        elif webhook_object == 'page':
+            return handle_page_webhook(data)
+        else:
+            logger.warning(f"Unknown webhook object type: {webhook_object}")
+            return jsonify({'status': 'unknown_object_type'}), 200
     
     except Exception as e:
         logger.error(f"Error processing webhook: {e}")
@@ -123,6 +136,104 @@ def handle_webhook():
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
+
+def handle_instagram_webhook(data):
+    """Handle Instagram-specific webhook format"""
+    logger.info("Processing Instagram webhook...")
+    
+    entries = data.get('entry', [])
+    logger.info(f"Number of Instagram entries: {len(entries)}")
+    
+    for i, entry in enumerate(entries):
+        logger.info(f"Processing Instagram entry {i+1}: {json.dumps(entry, indent=2)}")
+        
+        # Instagram messaging events
+        messaging_events = entry.get('messaging', [])
+        logger.info(f"Number of Instagram messaging events: {len(messaging_events)}")
+        
+        for j, messaging_event in enumerate(messaging_events):
+            logger.info(f"Processing Instagram messaging event {j+1}: {json.dumps(messaging_event, indent=2)}")
+            process_instagram_message_event(messaging_event)
+    
+    logger.info("Instagram webhook processing completed")
+    return jsonify({'status': 'success'}), 200
+
+def handle_page_webhook(data):
+    """Handle Facebook Page webhook format (for Instagram connected to Pages)"""
+    logger.info("Processing Facebook Page webhook...")
+    
+    entries = data.get('entry', [])
+    logger.info(f"Number of Page entries: {len(entries)}")
+    
+    for i, entry in enumerate(entries):
+        logger.info(f"Processing Page entry {i+1}: {json.dumps(entry, indent=2)}")
+        
+        # Page messaging events
+        messaging_events = entry.get('messaging', [])
+        logger.info(f"Number of Page messaging events: {len(messaging_events)}")
+        
+        for j, messaging_event in enumerate(messaging_events):
+            logger.info(f"Processing Page messaging event {j+1}: {json.dumps(messaging_event, indent=2)}")
+            process_page_message_event(messaging_event)
+    
+    logger.info("Page webhook processing completed")
+    return jsonify({'status': 'success'}), 200
+
+def process_instagram_message_event(messaging_event):
+    """Process Instagram-specific message events"""
+    sender_id = messaging_event.get('sender', {}).get('id')
+    recipient_id = messaging_event.get('recipient', {}).get('id')
+    
+    logger.info(f"Instagram message - Sender: {sender_id}, Recipient: {recipient_id}")
+    
+    # Check if this is an incoming message (not sent by us)
+    if 'message' in messaging_event and sender_id != recipient_id:
+        message_text = messaging_event['message'].get('text', '')
+        
+        logger.info(f"Received Instagram message from {sender_id}: {message_text}")
+        
+        # Get user info
+        user_info = message_handler.get_user_info(sender_id)
+        username = user_info.get('username', 'User') if user_info else 'User'
+        
+        # Generate auto-reply
+        reply_text = generate_auto_reply(message_text, username)
+        logger.info(f"Generated reply: {reply_text}")
+        
+        # Send reply
+        result = message_handler.send_message(sender_id, reply_text)
+        if result:
+            logger.info("Instagram reply sent successfully")
+        else:
+            logger.error("Failed to send Instagram reply")
+
+def process_page_message_event(messaging_event):
+    """Process Facebook Page message events (for Instagram connected to Pages)"""
+    sender_id = messaging_event.get('sender', {}).get('id')
+    recipient_id = messaging_event.get('recipient', {}).get('id')
+    
+    logger.info(f"Page message - Sender: {sender_id}, Recipient: {recipient_id}")
+    
+    # Check if this is an incoming message (not sent by us)
+    if 'message' in messaging_event and sender_id != recipient_id:
+        message_text = messaging_event['message'].get('text', '')
+        
+        logger.info(f"Received Page message from {sender_id}: {message_text}")
+        
+        # Get user info
+        user_info = message_handler.get_user_info(sender_id)
+        username = user_info.get('username', 'User') if user_info else 'User'
+        
+        # Generate auto-reply
+        reply_text = generate_auto_reply(message_text, username)
+        logger.info(f"Generated reply: {reply_text}")
+        
+        # Send reply
+        result = message_handler.send_message(sender_id, reply_text)
+        if result:
+            logger.info("Page reply sent successfully")
+        else:
+            logger.error("Failed to send Page reply")
 
 def process_message_event(messaging_event):
     """Process individual message events"""
