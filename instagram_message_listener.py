@@ -145,24 +145,41 @@ class InstagramMessagingBot:
             conversation_id = conversation['id']
             messages = self.get_conversation_messages(conversation_id)
             
+            logger.info(f"Conversation {conversation_id}: Found {len(messages)} messages")
+            
+            # Debug: Log all messages in this conversation
+            for i, message in enumerate(messages):
+                logger.info(f"Message {i+1}: ID={message.get('id')}, From={message.get('from', {})}, Message={message.get('message', 'No text')}")
+            
             for message in messages:
                 message_id = message['id']
                 
                 # Skip if we've already processed this message
                 if message_id in self.processed_messages:
+                    logger.info(f"Skipping already processed message: {message_id}")
                     continue
                 
-                # Skip if this is our own message (from bot)
+                # Get message details
                 from_user = message.get('from', {})
-                if from_user.get('id') == 'me':  # This would be our bot's messages
+                from_user_id = from_user.get('id')
+                message_text = message.get('message', '')
+                
+                logger.info(f"Processing message: ID={message_id}, From={from_user_id}, Text='{message_text}'")
+                
+                # Skip if this is our own message (from bot)
+                # Check if from_user_id matches our bot's Instagram account ID
+                if not from_user_id or from_user_id == '17841473964575374':  # get_voyage's Instagram ID
+                    logger.info(f"Skipping bot's own message: {message_id}")
                     self.processed_messages.add(message_id)
                     continue
                 
-                # Process new incoming message
-                message_text = message.get('message', '')
-                from_user_id = from_user.get('id')
+                # Skip empty messages
+                if not message_text:
+                    logger.info(f"Skipping empty message: {message_id}")
+                    self.processed_messages.add(message_id)
+                    continue
                 
-                logger.info(f"New message from {from_user_id}: {message_text}")
+                logger.info(f"NEW MESSAGE DETECTED from {from_user_id}: {message_text}")
                 
                 # Get user info
                 user_info = self.get_user_info(from_user_id)
