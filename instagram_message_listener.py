@@ -588,6 +588,48 @@ def download_messages():
     except Exception as e:
         return f"Error downloading messages file: {e}", 500
 
+@app.route('/debug', methods=['GET'])
+def debug_info():
+    """Debug endpoint to show detailed bot information"""
+    try:
+        # Get conversations and their messages
+        conversations = bot.get_conversations()
+        debug_data = {
+            'bot_status': {
+                'running': bot.running,
+                'processed_messages': list(bot.processed_messages),
+                'processed_count': len(bot.processed_messages)
+            },
+            'conversations': []
+        }
+        
+        for conv in conversations[:3]:  # Limit to first 3 conversations
+            conv_id = conv['id']
+            messages = bot.get_conversation_messages(conv_id)
+            
+            conv_debug = {
+                'id': conv_id,
+                'participants': conv.get('participants', []),
+                'message_count': len(messages),
+                'messages': []
+            }
+            
+            for msg in messages[:5]:  # Limit to first 5 messages per conversation
+                conv_debug['messages'].append({
+                    'id': msg.get('id'),
+                    'from': msg.get('from', {}),
+                    'message': msg.get('message', ''),
+                    'created_time': msg.get('created_time', ''),
+                    'processed': msg.get('id') in bot.processed_messages
+                })
+            
+            debug_data['conversations'].append(conv_debug)
+        
+        return jsonify(debug_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     # Check if required environment variables are set
     if not ACCESS_TOKEN:
