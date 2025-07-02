@@ -1,6 +1,6 @@
 # Instagram Auto-Reply Bot
 
-A simple Instagram bot that automatically replies to direct messages using the official Instagram Graph API.
+A simple Instagram bot that automatically replies to direct messages using the Instagram Messaging API with polling.
 
 ## 🚀 Live App
 
@@ -8,10 +8,10 @@ A simple Instagram bot that automatically replies to direct messages using the o
 
 ## 📱 What It Does
 
-- Receives Instagram direct messages via webhook
-- Automatically replies with a friendly message
+- Polls Instagram conversations every 5 seconds for new messages
+- Automatically replies with a friendly message to any new message
 - Works with Instagram Business/Creator accounts
-- Uses official Instagram Graph API v19.0
+- Uses Instagram Messaging API (not webhooks)
 
 ## 🤖 Bot Response
 
@@ -25,17 +25,19 @@ The bot sends a simple, generic reply to any message:
 - Must be a **Business** or **Creator** account (not personal)
 - Account: `get_voyage`
 
-### 2. Facebook App Configuration
+### 2. Instagram App Configuration
 1. Go to [Facebook Developers Console](https://developers.facebook.com/)
-2. Create/configure your app with Instagram product
-3. Set webhook URL: `https://summy-9f6d7e440dad.herokuapp.com/webhook`
-4. Set verify token: `summy_webhook_2024_secure`
-5. Subscribe to `messages` events
+2. Create an Instagram app (not Facebook app)
+3. Get Instagram Messaging API permissions:
+   - `instagram_basic`
+   - `instagram_manage_messages`
+4. Generate access token for your Instagram account
 
-### 3. Required Permissions
-- `instagram_basic`
-- `instagram_manage_messages`
-- `pages_messaging` (if using Facebook Pages)
+### 3. No Webhooks Required
+Unlike traditional Instagram bots, this uses the Instagram Messaging API which:
+- Polls for messages every 5 seconds
+- Doesn't require webhook setup
+- Works directly with Instagram conversations
 
 ## 🧪 Testing
 
@@ -44,66 +46,51 @@ The bot sends a simple, generic reply to any message:
 curl https://summy-9f6d7e440dad.herokuapp.com/health
 ```
 
-### Webhook Verification
+### Bot Statistics
 ```bash
-curl "https://summy-9f6d7e440dad.herokuapp.com/webhook?hub.mode=subscribe&hub.verify_token=summy_webhook_2024_secure&hub.challenge=test"
+curl https://summy-9f6d7e440dad.herokuapp.com/stats
 ```
 
-### Test Message Processing
+### Test Conversations Access
 ```bash
-curl -X POST https://summy-9f6d7e440dad.herokuapp.com/webhook \
-  -H "Content-Type: application/json" \
-  -d '{
-    "object": "instagram",
-    "entry": [
-      {
-        "id": "instagram_account_id",
-        "messaging": [
-          {
-            "sender": {"id": "test_user"},
-            "recipient": {"id": "instagram_account_id"},
-            "message": {"text": "Hello"}
-          }
-        ]
-      }
-    ]
-  }'
+curl https://summy-9f6d7e440dad.herokuapp.com/test-conversations
 ```
 
 ## 📝 Environment Variables
 
 Required environment variables (configured in `.env`):
-- `INSTAGRAM_ACCESS_TOKEN`: Your Instagram access token
-- `INSTAGRAM_APP_SECRET`: Your app secret
-- `VERIFY_TOKEN`: Webhook verification token
+- `INSTAGRAM_ACCESS_TOKEN`: Your Instagram Messaging API access token
+- `INSTAGRAM_APP_SECRET`: Your Instagram app secret
 
-## 🔍 Troubleshooting
+## 🔄 How It Works
 
-### Not Receiving Messages?
+1. **Background Polling**: Bot runs a background thread that checks for new messages every 5 seconds
+2. **Conversation Detection**: Fetches all conversations using Instagram Messaging API
+3. **Message Processing**: Checks each conversation for new messages
+4. **Auto-Reply**: Sends generic reply to any new incoming message
+5. **Duplicate Prevention**: Tracks processed message IDs to avoid duplicate replies
 
-1. **Development Mode**: Instagram apps in development mode only receive webhooks from test users
-   - Add test users in Facebook Developers Console → Roles → Test Users
-   - OR submit app for review to go live
+## 🔍 Monitoring
 
-2. **Account Type**: Ensure Instagram account is Business/Creator (not personal)
+### Check Bot Status
+The `/health` endpoint shows:
+- Bot running status
+- Polling status
+- Number of processed messages
 
-3. **Webhook Configuration**: Verify webhook is properly configured in Facebook Developers Console
-
-4. **Permissions**: Ensure app has required Instagram messaging permissions
-
-## 📊 Monitoring
-
-Check Heroku logs to see webhook activity:
+### Heroku Logs
 ```bash
 heroku logs --tail --app summy
 ```
 
 Look for log messages like:
 ```
-INSTAGRAM WEBHOOK RECEIVED
-Processing Instagram webhook...
-Received Instagram message from [USER_ID]: [MESSAGE]
-Generated reply: Hi [username]! Thanks for your message...
+Starting Instagram message polling...
+Checking for new messages...
+Found X conversations
+New message from [USER_ID]: [MESSAGE]
+Sending reply: Hi [username]! Thanks for your message...
+Reply sent successfully
 ```
 
 ## 🚀 Deployment
@@ -113,7 +100,7 @@ The app is automatically deployed to Heroku when changes are pushed to the main 
 ## 📁 Project Structure
 
 ```
-├── instagram_message_listener.py  # Main Flask application
+├── instagram_message_listener.py  # Main Flask app with polling bot
 ├── requirements.txt              # Python dependencies
 ├── Procfile                     # Heroku deployment config
 ├── runtime.txt                  # Python version
@@ -123,12 +110,42 @@ The app is automatically deployed to Heroku when changes are pushed to the main 
 
 ## 🔗 API Endpoints
 
-- `GET /` - Landing page
-- `GET /health` - Health check
-- `GET /webhook` - Webhook verification
-- `POST /webhook` - Webhook message processing
-- `POST /test-send` - Manual message sending (for testing)
+- `GET /` - Landing page showing bot status
+- `GET /health` - Health check with polling status
+- `GET /stats` - Bot statistics (messages processed, etc.)
+- `GET /test-conversations` - Test conversations API access
+
+## ⚡ Key Differences from Webhook Approach
+
+### Instagram Messaging API (Current)
+✅ **Polling-based**: Checks for messages every 5 seconds
+✅ **Direct API access**: Uses `graph.instagram.com` endpoints
+✅ **No webhook setup**: No need for webhook configuration
+✅ **Real-time-ish**: 5-second delay maximum
+✅ **Simpler setup**: Just need API access token
+
+### Webhook Approach (Previous)
+❌ **Event-driven**: Requires webhook configuration
+❌ **Complex setup**: Facebook app, webhook verification, etc.
+❌ **Development mode issues**: Only works with test users
+❌ **More dependencies**: Requires proper Facebook app review
+
+## 🔧 Troubleshooting
+
+### Not Receiving/Responding to Messages?
+
+1. **Check Access Token**: Ensure your Instagram access token has messaging permissions
+2. **Account Type**: Instagram account must be Business/Creator
+3. **API Permissions**: Verify `instagram_manage_messages` permission
+4. **Check Logs**: Monitor Heroku logs for API errors
+5. **Test Conversations**: Use `/test-conversations` endpoint to verify API access
+
+### Common Issues
+
+- **403 Errors**: Usually means insufficient permissions
+- **Rate Limiting**: Instagram API has rate limits for polling
+- **Token Expiry**: Access tokens may need to be refreshed
 
 ---
 
-**Status**: ✅ Live and operational with official Instagram Graph API
+**Status**: ✅ Live with Instagram Messaging API polling (no webhooks)
