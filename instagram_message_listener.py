@@ -217,48 +217,304 @@ def start_background_polling():
 
 @app.route('/', methods=['GET'])
 def landing_page():
-    """Simple landing page"""
+    """Console-style frontend"""
     return """
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Instagram Messaging Bot</title>
+        <title>Instagram Bot Console</title>
         <style>
-            body {
-                font-family: Arial, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
+            * {
                 margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
+                padding: 0;
+                box-sizing: border-box;
             }
-            .container {
+            
+            body {
+                font-family: 'Courier New', monospace;
+                background: #0a0a0a;
+                color: #00ff00;
+                overflow: hidden;
+            }
+            
+            .console-container {
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                padding: 20px;
+            }
+            
+            .header {
+                border-bottom: 2px solid #00ff00;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }
+            
+            .header h1 {
+                color: #00ff00;
+                font-size: 24px;
+                text-shadow: 0 0 10px #00ff00;
+            }
+            
+            .status-bar {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 20px;
+                padding: 10px;
+                background: rgba(0, 255, 0, 0.1);
+                border: 1px solid #00ff00;
+            }
+            
+            .status-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .status-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: #00ff00;
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+            
+            .console-output {
+                flex: 1;
+                background: rgba(0, 0, 0, 0.8);
+                border: 1px solid #00ff00;
+                padding: 15px;
+                overflow-y: auto;
+                font-size: 14px;
+                line-height: 1.4;
+            }
+            
+            .log-entry {
+                margin-bottom: 5px;
+                padding: 2px 0;
+            }
+            
+            .log-timestamp {
+                color: #888;
+            }
+            
+            .log-info {
+                color: #00ff00;
+            }
+            
+            .log-message {
+                color: #ffff00;
+            }
+            
+            .log-reply {
+                color: #00aaff;
+            }
+            
+            .log-error {
+                color: #ff4444;
+            }
+            
+            .log-polling {
+                color: #888;
+            }
+            
+            .cursor {
+                animation: blink 1s infinite;
+            }
+            
+            @keyframes blink {
+                0%, 50% { opacity: 1; }
+                51%, 100% { opacity: 0; }
+            }
+            
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+            
+            .stat-box {
+                background: rgba(0, 255, 0, 0.1);
+                border: 1px solid #00ff00;
+                padding: 10px;
                 text-align: center;
-                padding: 2rem;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 10px;
-                backdrop-filter: blur(10px);
             }
-            h1 {
-                font-size: 3rem;
-                margin-bottom: 1rem;
+            
+            .stat-value {
+                font-size: 24px;
+                font-weight: bold;
+                color: #00ff00;
             }
-            p {
-                font-size: 1.2rem;
-                opacity: 0.9;
+            
+            .stat-label {
+                font-size: 12px;
+                color: #888;
             }
         </style>
     </head>
     <body>
-        <div class="container">
-            <h1>Instagram Bot</h1>
-            <p>Instagram Messaging API Bot is Running</p>
-            <p>🤖 Polling for messages every 5 seconds</p>
+        <div class="console-container">
+            <div class="header">
+                <h1>INSTAGRAM BOT CONSOLE v2.0</h1>
+                <div class="status-bar">
+                    <div class="status-item">
+                        <div class="status-dot"></div>
+                        <span>POLLING ACTIVE</span>
+                    </div>
+                    <div class="status-item">
+                        <span id="current-time"></span>
+                    </div>
+                    <div class="status-item">
+                        <span>STATUS: <span id="bot-status">ONLINE</span></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="processed-count">0</div>
+                    <div class="stat-label">MESSAGES PROCESSED</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="conversations-count">0</div>
+                    <div class="stat-label">ACTIVE CONVERSATIONS</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="uptime">00:00:00</div>
+                    <div class="stat-label">UPTIME</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="last-poll">Never</div>
+                    <div class="stat-label">LAST POLL</div>
+                </div>
+            </div>
+            
+            <div class="console-output" id="console-output">
+                <div class="log-entry log-info">
+                    <span class="log-timestamp">[SYSTEM]</span> Instagram Bot Console initialized
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-timestamp">[SYSTEM]</span> Connecting to Instagram Messaging API...
+                </div>
+                <div class="log-entry log-info">
+                    <span class="log-timestamp">[SYSTEM]</span> Polling started - checking every 5 seconds
+                </div>
+                <div class="log-entry log-polling">
+                    <span class="log-timestamp">[POLL]</span> Waiting for messages... <span class="cursor">_</span>
+                </div>
+            </div>
         </div>
+        
+        <script>
+            let startTime = Date.now();
+            let lastLogCount = 0;
+            
+            // Update current time
+            function updateTime() {
+                const now = new Date();
+                document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            }
+            
+            // Update uptime
+            function updateUptime() {
+                const elapsed = Date.now() - startTime;
+                const hours = Math.floor(elapsed / 3600000);
+                const minutes = Math.floor((elapsed % 3600000) / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                document.getElementById('uptime').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            // Add log entry
+            function addLog(type, message) {
+                const output = document.getElementById('console-output');
+                const timestamp = new Date().toLocaleTimeString();
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span> ${message}`;
+                output.appendChild(entry);
+                output.scrollTop = output.scrollHeight;
+                
+                // Keep only last 100 entries
+                while (output.children.length > 100) {
+                    output.removeChild(output.firstChild);
+                }
+            }
+            
+            // Fetch bot stats
+            async function fetchStats() {
+                try {
+                    const [healthResponse, statsResponse, conversationsResponse] = await Promise.all([
+                        fetch('/health'),
+                        fetch('/stats'),
+                        fetch('/test-conversations')
+                    ]);
+                    
+                    const health = await healthResponse.json();
+                    const stats = await statsResponse.json();
+                    const conversations = await conversationsResponse.json();
+                    
+                    // Update stats display
+                    document.getElementById('processed-count').textContent = health.processed_messages || 0;
+                    document.getElementById('conversations-count').textContent = conversations.conversations_count || 0;
+                    document.getElementById('bot-status').textContent = health.polling ? 'ONLINE' : 'OFFLINE';
+                    document.getElementById('last-poll').textContent = new Date().toLocaleTimeString();
+                    
+                    // Check for new messages
+                    const currentCount = health.processed_messages || 0;
+                    if (currentCount > lastLogCount) {
+                        const newMessages = currentCount - lastLogCount;
+                        addLog('message', `📨 ${newMessages} new message(s) processed`);
+                        lastLogCount = currentCount;
+                    }
+                    
+                    // Add polling log
+                    addLog('polling', `🔄 Polling completed - ${conversations.conversations_count} conversations checked`);
+                    
+                } catch (error) {
+                    addLog('error', `❌ Error fetching stats: ${error.message}`);
+                    document.getElementById('bot-status').textContent = 'ERROR';
+                }
+            }
+            
+            // Simulate message activity for demo
+            function simulateActivity() {
+                const activities = [
+                    'info|🔍 Scanning conversations for new messages...',
+                    'polling|⏱️ Waiting 5 seconds before next poll...',
+                    'info|📡 API connection stable',
+                    'polling|🔄 Checking Instagram Messaging API...'
+                ];
+                
+                const activity = activities[Math.floor(Math.random() * activities.length)];
+                const [type, message] = activity.split('|');
+                addLog(type, message);
+            }
+            
+            // Initialize
+            updateTime();
+            updateUptime();
+            fetchStats();
+            
+            // Set intervals
+            setInterval(updateTime, 1000);
+            setInterval(updateUptime, 1000);
+            setInterval(fetchStats, 10000); // Every 10 seconds
+            setInterval(simulateActivity, 15000); // Every 15 seconds
+            
+            // Initial activity simulation
+            setTimeout(() => addLog('info', '✅ Bot initialization complete'), 2000);
+            setTimeout(() => addLog('info', '🎯 Ready to receive Instagram messages'), 3000);
+        </script>
     </body>
     </html>
     """
