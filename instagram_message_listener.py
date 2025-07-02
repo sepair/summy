@@ -55,22 +55,50 @@ class InstagramMessagingBot:
         url = f"{self.base_url}/{conversation_id}/messages"
         params = {
             'access_token': self.access_token,
-            'fields': 'id,created_time,from,to,message',
+            'fields': 'id,created_time,from,to,message,attachments',
             'limit': 10  # Get last 10 messages
         }
         
         try:
             response = requests.get(url, params=params)
             logger.info(f"Messages API Response for {conversation_id}: {response.status_code}")
+            logger.info(f"Messages API Full Response: {response.text}")
+            
+            if response.status_code == 200:
+                data = response.json().get('data', [])
+                logger.info(f"Messages returned: {len(data)}")
+                return data
+            else:
+                logger.error(f"Failed to get messages for {conversation_id}: {response.text}")
+                # Try alternative endpoint
+                return self.try_alternative_messages_endpoint(conversation_id)
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error getting messages for {conversation_id}: {e}")
+            return []
+    
+    def try_alternative_messages_endpoint(self, conversation_id):
+        """Try alternative messages endpoint"""
+        # Try without specific fields
+        url = f"{self.base_url}/{conversation_id}/messages"
+        params = {
+            'access_token': self.access_token,
+            'limit': 10
+        }
+        
+        try:
+            response = requests.get(url, params=params)
+            logger.info(f"Alternative Messages API Response: {response.status_code}")
+            logger.info(f"Alternative Messages API Response: {response.text}")
             
             if response.status_code == 200:
                 return response.json().get('data', [])
             else:
-                logger.error(f"Failed to get messages for {conversation_id}: {response.text}")
+                logger.error(f"Alternative endpoint also failed: {response.text}")
                 return []
                 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error getting messages for {conversation_id}: {e}")
+            logger.error(f"Error with alternative endpoint: {e}")
             return []
     
     def send_message(self, conversation_id, message_text):
