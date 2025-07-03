@@ -302,30 +302,43 @@ def verify_webhook_signature(payload, signature):
         logger.error(f"Error verifying webhook signature: {e}")
         return False
 
-def process_webhook_message(message_data):
-    """Process incoming webhook message"""
+def process_webhook_message(messaging_event):
+    """Process incoming webhook message from Instagram messaging format"""
     try:
-        logger.info(f"🔔 WEBHOOK MESSAGE RECEIVED: {json.dumps(message_data, indent=2)}")
+        logger.info(f"🔔 WEBHOOK MESSAGE RECEIVED: {json.dumps(messaging_event, indent=2)}")
         
-        # Extract message details from webhook
-        message_id = message_data.get('id')
-        from_user = message_data.get('from', {})
-        from_user_id = from_user.get('id')
-        message_text = message_data.get('message', '')
-        created_time = message_data.get('created_time', '')
+        # Extract message details from Instagram webhook format
+        sender = messaging_event.get('sender', {})
+        recipient = messaging_event.get('recipient', {})
+        message = messaging_event.get('message', {})
+        
+        from_user_id = sender.get('id')
+        to_user_id = recipient.get('id')
+        message_id = message.get('mid')
+        message_text = message.get('text', '')
+        timestamp = messaging_event.get('timestamp', '')
+        is_echo = message.get('is_echo', False)
         
         print(f"🔔 WEBHOOK MESSAGE:")
-        print(f"   ID: {message_id}")
+        print(f"   Message ID: {message_id}")
         print(f"   From User ID: {from_user_id}")
+        print(f"   To User ID: {to_user_id}")
         print(f"   Message Text: '{message_text}'")
-        print(f"   Created: {created_time}")
+        print(f"   Timestamp: {timestamp}")
+        print(f"   Is Echo: {is_echo}")
+        
+        # Skip if this is an echo (our own message)
+        if is_echo:
+            print(f"   ⏭️  SKIPPING: Echo message (bot's own message)")
+            logger.info(f"Skipping echo message: {message_id}")
+            return
         
         # Skip if we've already processed this message
         if message_id in bot.processed_messages:
             logger.info(f"Skipping already processed message: {message_id}")
             return
         
-        # Skip if this is our own message (from bot)
+        # Skip if this is our own message (from bot account)
         if not from_user_id or from_user_id == '17841473964575374':  # get_voyage's Instagram ID
             print(f"   ⏭️  SKIPPING: Bot's own message")
             logger.info(f"Skipping bot's own message: {message_id}")
@@ -337,7 +350,7 @@ def process_webhook_message(message_data):
         
         # Get user info
         user_info = bot.get_user_info(from_user_id)
-        username = user_info.get('username', 'User')
+        username = user_info.get('username', f'User_{from_user_id}')
         print(f"   👤 From: @{username}")
         
         # Generate and send reply
@@ -345,27 +358,25 @@ def process_webhook_message(message_data):
         print(f"   💬 Sending reply: {reply_text}")
         logger.info(f"Sending reply: {reply_text}")
         
-        # Get conversation ID (we'll need to find it or use the message context)
-        # For now, we'll try to extract it from the webhook data
-        conversation_id = message_data.get('conversation_id') or message_data.get('thread_id')
+        # For Instagram webhooks, we need to find the conversation ID
+        # We'll search through conversations to find the one with this user
+        conversation_id = None
+        conversations = bot.get_conversations()
         
-        if not conversation_id:
-            # If no conversation ID in webhook, we need to find it
-            conversations = bot.get_conversations()
-            for conv in conversations:
-                conv_messages = bot.get_conversation_messages(conv['id'])
-                for msg in conv_messages:
-                    if msg.get('id') == message_id:
-                        conversation_id = conv['id']
-                        break
-                if conversation_id:
+        for conv in conversations:
+            participants = conv.get('participants', {}).get('data', [])
+            for participant in participants:
+                if participant.get('id') == from_user_id:
+                    conversation_id = conv['id']
                     break
+            if conversation_id:
+                break
         
         if conversation_id:
             # Log message to file
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             display_text = message_text if message_text else "[Webhook message - no text]"
-            bot.log_message_to_file(username, display_text, reply_text, timestamp)
+            bot.log_message_to_file(username, display_text, reply_text, timestamp_str)
             
             # Send reply
             result = bot.send_message(conversation_id, reply_text)
@@ -376,13 +387,20 @@ def process_webhook_message(message_data):
                 print(f"   ❌ Failed to send reply")
                 logger.error("Failed to send reply")
         else:
+            print(f"   ⚠️  Could not find conversation ID for user {from_user_id}")
             logger.error(f"Could not find conversation ID for message {message_id}")
+            
+            # Still log the message even if we can't reply
+            timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            display_text = message_text if message_text else "[Webhook message - no text]"
+            bot.log_message_to_file(username, display_text, "Could not send reply - conversation not found", timestamp_str)
         
         # Mark message as processed
         bot.processed_messages.add(message_id)
         print(f"   📝 Message marked as processed")
         
     except Exception as e:
+        print(f"   ❌ ERROR processing webhook message: {e}")
         logger.error(f"Error processing webhook message: {e}")
 
 @app.route('/', methods=['GET'])
@@ -901,14 +919,13 @@ def webhook_receive():
         for entry in data.get('entry', []):
             print(f"   📨 Processing entry: {entry.get('id', 'unknown')}")
             
-            # Check for messaging events
+            # Check for messaging events (Instagram format)
             if 'messaging' in entry:
                 for messaging_event in entry['messaging']:
-                    if 'message' in messaging_event:
-                        print(f"   💬 Found message in messaging event")
-                        # Process the message
-                        process_webhook_message(messaging_event['message'])
-                        messages_processed += 1
+                    print(f"   💬 Found messaging event: {json.dumps(messaging_event, indent=2)}")
+                    # Process the entire messaging event (not just the message part)
+                    process_webhook_message(messaging_event)
+                    messages_processed += 1
             
             # Check for changes (alternative format)
             elif 'changes' in entry:
