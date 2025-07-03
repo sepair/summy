@@ -1,1 +1,0 @@
-# Temporary file to satisfy Python buildpack - will be removed after switching to Node.js
