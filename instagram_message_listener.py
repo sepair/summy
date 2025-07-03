@@ -73,27 +73,8 @@ def get_user_info(user_id):
         print(f"Error getting user info for {user_id}: {e}")
         return {'id': user_id, 'username': f'User_{user_id}'}
 
-def get_conversations():
-    """Get conversations from Facebook Graph API (Instagram Messaging)"""
-    try:
-        if not IG_BUSINESS_ID:
-            print("❌ IG_BUSINESS_ID not configured")
-            return []
-            
-        url = f"https://graph.facebook.com/v19.0/{IG_BUSINESS_ID}/conversations"
-        params = {
-            'access_token': ACCESS_TOKEN,
-            'fields': 'id,participants,updated_time'
-        }
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
-            return response.json().get('data', [])
-        else:
-            print(f"Error getting conversations: {response.status_code} - {response.text}")
-            return []
-    except Exception as e:
-        print(f"Error getting conversations: {e}")
-        return []
+# Note: Instagram Messaging API doesn't support conversations endpoint like Messenger
+# Messages are handled directly via webhook recipient.id
 
 def send_message(recipient_id, message_text):
     """Send message via Instagram Messaging API (Facebook Graph API)"""
@@ -423,6 +404,7 @@ def webhook_receive():
     print(f'🔔 WEBHOOK RECEIVED at {timestamp}')
     print(f'   Signature: {signature[:20]}...' if signature else '   No signature')
     print(f'   Payload size: {len(payload)} bytes')
+    print(f'   Raw payload: {payload.decode("utf-8", errors="ignore")[:500]}...')
     
     # Verify signature (temporarily disabled for testing)
     signature_valid = verify_webhook_signature(payload, signature)
@@ -441,21 +423,28 @@ def webhook_receive():
             return 'Bad Request', 400
         
         print('   📋 JSON data parsed successfully')
+        print(f'   📋 Full webhook data: {json.dumps(data, indent=2)}')
         webhook_event['data'] = data
         webhook_event['status'] = 'processing_messages'
         
         # Process webhook entries
         messages_processed = 0
         entries = data.get('entry', [])
+        print(f'   📨 Found {len(entries)} entries in webhook')
         
-        for entry in entries:
-            print(f'   📨 Processing entry: {entry.get("id", "unknown")}')
+        for i, entry in enumerate(entries):
+            print(f'   📨 Processing entry {i+1}: {entry.get("id", "unknown")}')
+            print(f'   📨 Entry keys: {list(entry.keys())}')
             
             if 'messaging' in entry:
-                for messaging_event in entry['messaging']:
-                    print('   💬 Found messaging event')
+                messaging_events = entry['messaging']
+                print(f'   💬 Found {len(messaging_events)} messaging events')
+                for j, messaging_event in enumerate(messaging_events):
+                    print(f'   💬 Processing messaging event {j+1}')
                     process_webhook_message(messaging_event)
                     messages_processed += 1
+            else:
+                print(f'   ⚠️  No "messaging" field in entry. Available fields: {list(entry.keys())}')
         
         webhook_event['messages_processed'] = messages_processed
         webhook_event['status'] = 'completed'
@@ -470,6 +459,8 @@ def webhook_receive():
         
     except Exception as e:
         print(f'❌ Error processing webhook: {e}')
+        import traceback
+        print(f'❌ Full traceback: {traceback.format_exc()}')
         webhook_event['status'] = 'error'
         webhook_event['error'] = str(e)
         return 'Internal Server Error', 500
@@ -523,13 +514,17 @@ def api_messages():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/test-conversations')
-def test_conversations():
-    """Test conversations endpoint"""
-    conversations = get_conversations()
+@app.route('/debug')
+def debug():
+    """Debug endpoint to check configuration"""
     return jsonify({
-        'conversations_count': len(conversations),
-        'conversations': conversations[:5]  # First 5 for testing
+        'access_token_configured': bool(ACCESS_TOKEN),
+        'app_secret_configured': bool(APP_SECRET),
+        'ig_business_id_configured': bool(IG_BUSINESS_ID),
+        'ig_business_id': IG_BUSINESS_ID[:10] + '...' if IG_BUSINESS_ID else None,
+        'webhook_events_count': len(webhook_events),
+        'processed_messages_count': len(processed_messages),
+        'recent_webhook_events': webhook_events[-3:] if webhook_events else []
     })
 
 if __name__ == '__main__':
