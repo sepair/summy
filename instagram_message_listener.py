@@ -28,6 +28,8 @@ class InstagramMessagingBot:
         self.base_url = "https://graph.instagram.com/v19.0"
         self.processed_messages = set()  # Track processed message IDs
         self.running = False
+        self.live_logs = []  # Store live logs for web display
+        self.max_logs = 50  # Keep only last 50 log entries
         
     def get_conversations(self):
         """Get list of conversations"""
@@ -259,7 +261,7 @@ class InstagramMessagingBot:
         while self.running:
             try:
                 self.process_new_messages()
-                time.sleep(1)  # Check every 1 second
+                time.sleep(10)  # Check every 10 seconds
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
                 time.sleep(10)  # Wait longer on error
@@ -474,7 +476,7 @@ def landing_page():
                     <span class="log-timestamp">[SYSTEM]</span> Connecting to Instagram Messaging API...
                 </div>
                 <div class="log-entry log-info">
-                    <span class="log-timestamp">[SYSTEM]</span> Polling started - checking every 1 second
+                    <span class="log-timestamp">[SYSTEM]</span> Polling started - checking every 10 seconds
                 </div>
                 <div class="log-entry log-polling">
                     <span class="log-timestamp">[POLL]</span> Waiting for messages... <span class="cursor">_</span>
