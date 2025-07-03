@@ -4,9 +4,11 @@ import json
 import time
 import threading
 from datetime import datetime
-from flask import Flask, jsonify, send_file
+from flask import Flask, jsonify, send_file, request
 from dotenv import load_dotenv
 import logging
+import hmac
+import hashlib
 
 # Load environment variables
 load_dotenv()
@@ -21,6 +23,9 @@ app = Flask(__name__)
 ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN')
 APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
 BUSINESS_ACCOUNT_ID = os.getenv('INSTAGRAM_BUSINESS_ACCOUNT_ID')
+
+# Webhook configuration
+WEBHOOK_VERIFY_TOKEN = "summy_webhook_verify_token_2025"
 
 class InstagramMessagingBot:
     def __init__(self, access_token):
@@ -274,14 +279,110 @@ class InstagramMessagingBot:
 # Initialize bot
 bot = InstagramMessagingBot(ACCESS_TOKEN)
 
-# Start polling in background thread
-def start_background_polling():
-    if ACCESS_TOKEN:
-        polling_thread = threading.Thread(target=bot.start_polling, daemon=True)
-        polling_thread.start()
-        logger.info("Background polling thread started")
-    else:
-        logger.error("No access token provided - polling not started")
+def verify_webhook_signature(payload, signature):
+    """Verify webhook signature from Instagram"""
+    if not signature:
+        return False
+    
+    try:
+        # Remove 'sha256=' prefix if present
+        if signature.startswith('sha256='):
+            signature = signature[7:]
+        
+        # Calculate expected signature
+        expected_signature = hmac.new(
+            APP_SECRET.encode('utf-8'),
+            payload,
+            hashlib.sha256
+        ).hexdigest()
+        
+        return hmac.compare_digest(signature, expected_signature)
+    except Exception as e:
+        logger.error(f"Error verifying webhook signature: {e}")
+        return False
+
+def process_webhook_message(message_data):
+    """Process incoming webhook message"""
+    try:
+        logger.info(f"🔔 WEBHOOK MESSAGE RECEIVED: {json.dumps(message_data, indent=2)}")
+        
+        # Extract message details from webhook
+        message_id = message_data.get('id')
+        from_user = message_data.get('from', {})
+        from_user_id = from_user.get('id')
+        message_text = message_data.get('message', '')
+        created_time = message_data.get('created_time', '')
+        
+        print(f"🔔 WEBHOOK MESSAGE:")
+        print(f"   ID: {message_id}")
+        print(f"   From User ID: {from_user_id}")
+        print(f"   Message Text: '{message_text}'")
+        print(f"   Created: {created_time}")
+        
+        # Skip if we've already processed this message
+        if message_id in bot.processed_messages:
+            logger.info(f"Skipping already processed message: {message_id}")
+            return
+        
+        # Skip if this is our own message (from bot)
+        if not from_user_id or from_user_id == '17841473964575374':  # get_voyage's Instagram ID
+            print(f"   ⏭️  SKIPPING: Bot's own message")
+            logger.info(f"Skipping bot's own message: {message_id}")
+            bot.processed_messages.add(message_id)
+            return
+        
+        print(f"   ✅ NEW MESSAGE DETECTED from user {from_user_id}")
+        logger.info(f"NEW MESSAGE DETECTED from {from_user_id}: {message_text}")
+        
+        # Get user info
+        user_info = bot.get_user_info(from_user_id)
+        username = user_info.get('username', 'User')
+        print(f"   👤 From: @{username}")
+        
+        # Generate and send reply
+        reply_text = bot.generate_auto_reply(username)
+        print(f"   💬 Sending reply: {reply_text}")
+        logger.info(f"Sending reply: {reply_text}")
+        
+        # Get conversation ID (we'll need to find it or use the message context)
+        # For now, we'll try to extract it from the webhook data
+        conversation_id = message_data.get('conversation_id') or message_data.get('thread_id')
+        
+        if not conversation_id:
+            # If no conversation ID in webhook, we need to find it
+            conversations = bot.get_conversations()
+            for conv in conversations:
+                conv_messages = bot.get_conversation_messages(conv['id'])
+                for msg in conv_messages:
+                    if msg.get('id') == message_id:
+                        conversation_id = conv['id']
+                        break
+                if conversation_id:
+                    break
+        
+        if conversation_id:
+            # Log message to file
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            display_text = message_text if message_text else "[Webhook message - no text]"
+            bot.log_message_to_file(username, display_text, reply_text, timestamp)
+            
+            # Send reply
+            result = bot.send_message(conversation_id, reply_text)
+            if result:
+                print(f"   ✅ Reply sent successfully!")
+                logger.info("Reply sent successfully")
+            else:
+                print(f"   ❌ Failed to send reply")
+                logger.error("Failed to send reply")
+        else:
+            logger.error(f"Could not find conversation ID for message {message_id}")
+        
+        # Mark message as processed
+        bot.processed_messages.add(message_id)
+        print(f"   📝 Message marked as processed")
+        
+    except Exception as e:
+        logger.error(f"Error processing webhook message: {e}")
 
 @app.route('/', methods=['GET'])
 def landing_page():
@@ -721,6 +822,95 @@ def show_processed_messages():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/webhook', methods=['GET'])
+def webhook_verify():
+    """Webhook verification endpoint for Instagram"""
+    try:
+        # Get verification parameters
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        
+        logger.info(f"Webhook verification request: mode={mode}, token={token}, challenge={challenge}")
+        
+        # Verify the webhook
+        if mode == 'subscribe' and token == WEBHOOK_VERIFY_TOKEN:
+            logger.info("Webhook verified successfully!")
+            return challenge, 200
+        else:
+            logger.error(f"Webhook verification failed: mode={mode}, token={token}")
+            return 'Forbidden', 403
+            
+    except Exception as e:
+        logger.error(f"Error in webhook verification: {e}")
+        return 'Error', 500
+
+@app.route('/webhook', methods=['POST'])
+def webhook_receive():
+    """Webhook endpoint to receive Instagram messages"""
+    try:
+        # Get the raw payload
+        payload = request.get_data()
+        signature = request.headers.get('X-Hub-Signature-256', '')
+        
+        logger.info(f"Webhook received: signature={signature}")
+        logger.info(f"Webhook payload: {payload.decode('utf-8')}")
+        
+        # Verify signature
+        if not verify_webhook_signature(payload, signature):
+            logger.error("Webhook signature verification failed")
+            return 'Unauthorized', 401
+        
+        # Parse the JSON payload
+        data = request.get_json()
+        
+        if not data:
+            logger.error("No JSON data in webhook")
+            return 'Bad Request', 400
+        
+        logger.info(f"Webhook data: {json.dumps(data, indent=2)}")
+        
+        # Process webhook entries
+        for entry in data.get('entry', []):
+            # Check for messaging events
+            if 'messaging' in entry:
+                for messaging_event in entry['messaging']:
+                    if 'message' in messaging_event:
+                        # Process the message
+                        process_webhook_message(messaging_event['message'])
+            
+            # Check for changes (alternative format)
+            elif 'changes' in entry:
+                for change in entry['changes']:
+                    if change.get('field') == 'messages':
+                        value = change.get('value', {})
+                        if 'messages' in value:
+                            for message in value['messages']:
+                                process_webhook_message(message)
+        
+        return 'OK', 200
+        
+    except Exception as e:
+        logger.error(f"Error processing webhook: {e}")
+        return 'Error', 500
+
+@app.route('/webhook-info', methods=['GET'])
+def webhook_info():
+    """Display webhook configuration information"""
+    webhook_url = "https://summy-9f6d7e440dad.herokuapp.com/webhook"
+    
+    return jsonify({
+        'webhook_url': webhook_url,
+        'verify_token': WEBHOOK_VERIFY_TOKEN,
+        'app_secret': APP_SECRET[:8] + "..." if APP_SECRET else "Not configured",
+        'instructions': {
+            'step_1': f"Use this webhook URL: {webhook_url}",
+            'step_2': f"Use this verify token: {WEBHOOK_VERIFY_TOKEN}",
+            'step_3': "Configure in Instagram Developer Console",
+            'step_4': "Subscribe to 'messages' events"
+        }
+    }), 200
+
 if __name__ == '__main__':
     # Check if required environment variables are set
     if not ACCESS_TOKEN:
@@ -732,12 +922,11 @@ if __name__ == '__main__':
         exit(1)
     
     logger.info("Starting Instagram Messaging API bot...")
-    logger.info("This bot uses polling instead of webhooks")
+    logger.info("This bot uses WEBHOOKS for real-time message processing")
     logger.info("Make sure your Instagram account has messaging permissions")
+    logger.info(f"Webhook URL: https://summy-9f6d7e440dad.herokuapp.com/webhook")
+    logger.info(f"Verify Token: {WEBHOOK_VERIFY_TOKEN}")
     
-    # Start background polling
-    start_background_polling()
-    
-    # Run the Flask app
+    # Run the Flask app (no polling needed with webhooks)
     port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False)
