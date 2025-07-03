@@ -350,9 +350,10 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🚀 Instagram webhook bot running on port ${PORT}`);
+    console.log(`🚀 Node.js Instagram webhook bot running on port ${PORT}`);
     console.log(`📱 Webhook URL: https://summy-9f6d7e440dad.herokuapp.com/webhook`);
     console.log(`🔑 Verify Token: ${WEBHOOK_VERIFY_TOKEN}`);
+    console.log(`📋 Node.js app successfully deployed!`);
     
     if (!ACCESS_TOKEN) {
         console.error('❌ INSTAGRAM_ACCESS_TOKEN not configured');
