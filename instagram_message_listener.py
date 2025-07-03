@@ -283,6 +283,7 @@ def landing_page():
                 background: white;
                 color: black;
                 overflow: hidden;
+                font-weight: bold;
             }
             
             .console-container {
@@ -656,6 +657,44 @@ def debug_info():
             debug_data['conversations'].append(conv_debug)
         
         return jsonify(debug_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/processed-messages', methods=['GET'])
+def show_processed_messages():
+    """Show actual content of processed messages"""
+    try:
+        processed_details = []
+        conversations = bot.get_conversations()
+        
+        for conv in conversations:
+            conv_id = conv['id']
+            messages = bot.get_conversation_messages(conv_id)
+            
+            for msg in messages:
+                if msg.get('id') in bot.processed_messages:
+                    # Get user info
+                    from_user = msg.get('from', {})
+                    from_user_id = from_user.get('id')
+                    
+                    if from_user_id and from_user_id != '17841473964575374':  # Not bot's own message
+                        user_info = bot.get_user_info(from_user_id)
+                        
+                        processed_details.append({
+                            'message_id': msg.get('id'),
+                            'conversation_id': conv_id,
+                            'from_user_id': from_user_id,
+                            'from_username': user_info.get('username', 'Unknown'),
+                            'message_text': msg.get('message', ''),
+                            'created_time': msg.get('created_time', ''),
+                            'participants': [p.get('username', p.get('id')) for p in conv.get('participants', {}).get('data', [])]
+                        })
+        
+        return jsonify({
+            'processed_messages_count': len(processed_details),
+            'processed_messages': processed_details
+        }), 200
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
