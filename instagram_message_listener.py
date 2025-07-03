@@ -13,10 +13,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Instagram API configuration
-ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN')
+# Instagram Messaging API configuration (uses Facebook Graph API)
+ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN')  # This should be a Page Access Token
 APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
-BUSINESS_ACCOUNT_ID = os.getenv('INSTAGRAM_BUSINESS_ACCOUNT_ID')
+PAGE_ID = os.getenv('INSTAGRAM_BUSINESS_ACCOUNT_ID')  # This should be the Facebook Page ID
 WEBHOOK_VERIFY_TOKEN = "summy_webhook_verify_token_2025"
 
 # In-memory storage
@@ -54,16 +54,18 @@ def log_message(username, message_text, reply_text):
         print(f"Error logging message: {e}")
 
 def get_user_info(user_id):
-    """Get user information from Instagram API"""
+    """Get user information from Facebook Graph API (for Instagram users)"""
     try:
-        url = f"https://graph.instagram.com/v19.0/{user_id}"
+        # For Instagram users, we can try to get basic info
+        url = f"https://graph.facebook.com/v19.0/{user_id}"
         params = {
             'access_token': ACCESS_TOKEN,
-            'fields': 'id,username'
+            'fields': 'id,name'
         }
         response = requests.get(url, params=params)
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            return {'id': user_id, 'username': data.get('name', f'User_{user_id}')}
         else:
             print(f"Error getting user info: {response.status_code}")
             return {'id': user_id, 'username': f'User_{user_id}'}
@@ -72,9 +74,13 @@ def get_user_info(user_id):
         return {'id': user_id, 'username': f'User_{user_id}'}
 
 def get_conversations():
-    """Get conversations from Instagram API"""
+    """Get conversations from Facebook Graph API (Instagram Messaging)"""
     try:
-        url = "https://graph.instagram.com/v19.0/me/conversations"
+        if not PAGE_ID:
+            print("❌ PAGE_ID not configured")
+            return []
+            
+        url = f"https://graph.facebook.com/v19.0/{PAGE_ID}/conversations"
         params = {
             'access_token': ACCESS_TOKEN,
             'fields': 'id,participants,updated_time'
@@ -83,29 +89,34 @@ def get_conversations():
         if response.status_code == 200:
             return response.json().get('data', [])
         else:
-            print(f"Error getting conversations: {response.status_code}")
+            print(f"Error getting conversations: {response.status_code} - {response.text}")
             return []
     except Exception as e:
         print(f"Error getting conversations: {e}")
         return []
 
-def send_message(conversation_id, message_text):
-    """Send message via Instagram API"""
+def send_message(recipient_id, message_text):
+    """Send message via Facebook Graph API (Instagram Messaging)"""
     try:
-        url = f"https://graph.instagram.com/v19.0/{conversation_id}/messages"
+        if not PAGE_ID:
+            print("❌ PAGE_ID not configured")
+            return None
+            
+        url = f"https://graph.facebook.com/v19.0/{PAGE_ID}/messages"
         data = {
-            'message': message_text,
+            'recipient': {'id': recipient_id},
+            'message': {'text': message_text},
             'access_token': ACCESS_TOKEN
         }
-        response = requests.post(url, data=data)
+        response = requests.post(url, json=data)
         if response.status_code == 200:
-            print(f"✅ Message sent to conversation {conversation_id}")
+            print(f"✅ Message sent to user {recipient_id}")
             return response.json()
         else:
-            print(f"❌ Failed to send message: {response.status_code}")
+            print(f"❌ Failed to send message: {response.status_code} - {response.text}")
             return None
     except Exception as e:
-        print(f"❌ Failed to send message to {conversation_id}: {e}")
+        print(f"❌ Failed to send message to {recipient_id}: {e}")
         return None
 
 def generate_auto_reply(username):
@@ -162,34 +173,17 @@ def process_webhook_message(messaging_event):
         reply_text = generate_auto_reply(username)
         print(f'   💬 Generating reply: {reply_text}')
         
-        # Find conversation ID
-        conversations = get_conversations()
-        conversation_id = None
-        
-        for conv in conversations:
-            participants = conv.get('participants', {}).get('data', [])
-            for participant in participants:
-                if participant.get('id') == from_user_id:
-                    conversation_id = conv.get('id')
-                    break
-            if conversation_id:
-                break
-        
         # Log message
         display_text = message_text or '[Webhook message - no text]'
         
-        if conversation_id:
-            # Send reply
-            result = send_message(conversation_id, reply_text)
-            if result:
-                print('   ✅ Reply sent successfully!')
-                log_message(username, display_text, reply_text)
-            else:
-                print('   ❌ Failed to send reply')
-                log_message(username, display_text, 'Failed to send reply')
+        # Send reply directly to the user
+        result = send_message(from_user_id, reply_text)
+        if result:
+            print('   ✅ Reply sent successfully!')
+            log_message(username, display_text, reply_text)
         else:
-            print('   ⚠️  Could not find conversation ID')
-            log_message(username, display_text, 'Could not send reply - conversation not found')
+            print('   ❌ Failed to send reply')
+            log_message(username, display_text, 'Failed to send reply')
         
         # Mark as processed
         processed_messages.add(message_id)
