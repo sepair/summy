@@ -352,10 +352,18 @@ WEBHOOK_MONITOR_HTML = """
 
         // Set intervals
         setInterval(updateTime, 1000);
-        setInterval(checkWebhookEvents, 2000); // Check every 2 seconds for real-time updates
+        // Removed automatic polling to reduce console noise
+        // setInterval(checkWebhookEvents, 2000);
+
+        // Manual refresh button instead of auto-polling
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'r' || e.key === 'R') {
+                checkWebhookEvents();
+            }
+        });
 
         // Add some initial activity
-        setTimeout(() => addLog('info', '✅ Webhook monitor ready - send messages to get_voyage Instagram'), 2000);
+        setTimeout(() => addLog('info', '✅ Webhook monitor ready - send messages to get_voyage Instagram (Press R to refresh)'), 2000);
     </script>
 </body>
 </html>
