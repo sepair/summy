@@ -17,9 +17,10 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Instagram API credentials
+# Instagram Graph API credentials
 ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN')
 APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
+BUSINESS_ACCOUNT_ID = os.getenv('INSTAGRAM_BUSINESS_ACCOUNT_ID')
 
 class InstagramMessagingBot:
     def __init__(self, access_token):
@@ -279,8 +280,8 @@ def landing_page():
             
             body {
                 font-family: 'Courier New', monospace;
-                background: #0a0a0a;
-                color: #00ff00;
+                background: white;
+                color: black;
                 overflow: hidden;
             }
             
@@ -292,15 +293,15 @@ def landing_page():
             }
             
             .header {
-                border-bottom: 2px solid #00ff00;
+                border-bottom: 2px solid black;
                 padding-bottom: 10px;
                 margin-bottom: 20px;
             }
             
             .header h1 {
-                color: #00ff00;
+                color: black;
                 font-size: 24px;
-                text-shadow: 0 0 10px #00ff00;
+                font-weight: bold;
             }
             
             .status-bar {
@@ -308,8 +309,8 @@ def landing_page():
                 justify-content: space-between;
                 margin-bottom: 20px;
                 padding: 10px;
-                background: rgba(0, 255, 0, 0.1);
-                border: 1px solid #00ff00;
+                background: #f5f5f5;
+                border: 1px solid black;
             }
             
             .status-item {
@@ -322,7 +323,7 @@ def landing_page():
                 width: 10px;
                 height: 10px;
                 border-radius: 50%;
-                background: #00ff00;
+                background: green;
                 animation: pulse 2s infinite;
             }
             
@@ -334,8 +335,8 @@ def landing_page():
             
             .console-output {
                 flex: 1;
-                background: rgba(0, 0, 0, 0.8);
-                border: 1px solid #00ff00;
+                background: white;
+                border: 1px solid black;
                 padding: 15px;
                 overflow-y: auto;
                 font-size: 14px;
@@ -348,27 +349,28 @@ def landing_page():
             }
             
             .log-timestamp {
-                color: #888;
+                color: #666;
             }
             
             .log-info {
-                color: #00ff00;
+                color: black;
             }
             
             .log-message {
-                color: #ffff00;
+                color: #0066cc;
+                font-weight: bold;
             }
             
             .log-reply {
-                color: #00aaff;
+                color: #009900;
             }
             
             .log-error {
-                color: #ff4444;
+                color: #cc0000;
             }
             
             .log-polling {
-                color: #888;
+                color: #666;
             }
             
             .cursor {
@@ -388,8 +390,8 @@ def landing_page():
             }
             
             .stat-box {
-                background: rgba(0, 255, 0, 0.1);
-                border: 1px solid #00ff00;
+                background: #f5f5f5;
+                border: 1px solid black;
                 padding: 10px;
                 text-align: center;
             }
@@ -397,12 +399,12 @@ def landing_page():
             .stat-value {
                 font-size: 24px;
                 font-weight: bold;
-                color: #00ff00;
+                color: black;
             }
             
             .stat-label {
                 font-size: 12px;
-                color: #888;
+                color: #666;
             }
         </style>
     </head>
