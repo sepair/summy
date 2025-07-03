@@ -353,7 +353,7 @@ app.listen(PORT, () => {
     console.log(`🚀 Node.js Instagram webhook bot running on port ${PORT}`);
     console.log(`📱 Webhook URL: https://summy-9f6d7e440dad.herokuapp.com/webhook`);
     console.log(`🔑 Verify Token: ${WEBHOOK_VERIFY_TOKEN}`);
-    console.log(`📋 Node.js app successfully deployed! v2.1`);
+    console.log(`📋 Node.js app successfully deployed! v2.2 - Webhook Monitor`);
     
     if (!ACCESS_TOKEN) {
         console.error('❌ INSTAGRAM_ACCESS_TOKEN not configured');
