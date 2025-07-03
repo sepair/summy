@@ -202,44 +202,54 @@ class InstagramMessagingBot:
                 from_user = message.get('from', {})
                 from_user_id = from_user.get('id')
                 message_text = message.get('message', '')
+                created_time = message.get('created_time', '')
+                
+                print(f"🔍 PROCESSING MESSAGE:")
+                print(f"   ID: {message_id}")
+                print(f"   From User ID: {from_user_id}")
+                print(f"   Message Text: '{message_text}'")
+                print(f"   Created: {created_time}")
                 
                 logger.info(f"Processing message: ID={message_id}, From={from_user_id}, Text='{message_text}'")
                 
                 # Skip if this is our own message (from bot)
                 # Check if from_user_id matches our bot's Instagram account ID
                 if not from_user_id or from_user_id == '17841473964575374':  # get_voyage's Instagram ID
+                    print(f"   ⏭️  SKIPPING: Bot's own message")
                     logger.info(f"Skipping bot's own message: {message_id}")
                     self.processed_messages.add(message_id)
                     continue
                 
-                # Skip empty messages
-                if not message_text:
-                    logger.info(f"Skipping empty message: {message_id}")
-                    self.processed_messages.add(message_id)
-                    continue
-                
+                # Process message even if text is empty (Instagram API might not return text)
+                print(f"   ✅ NEW MESSAGE DETECTED from user {from_user_id}")
                 logger.info(f"NEW MESSAGE DETECTED from {from_user_id}: {message_text}")
                 
                 # Get user info
                 user_info = self.get_user_info(from_user_id)
                 username = user_info.get('username', 'User')
+                print(f"   👤 From: @{username}")
                 
                 # Generate and send reply
                 reply_text = self.generate_auto_reply(username)
+                print(f"   💬 Sending reply: {reply_text}")
                 logger.info(f"Sending reply: {reply_text}")
                 
-                # Log message to file
+                # Log message to file (even if text is empty)
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                self.log_message_to_file(username, message_text, reply_text, timestamp)
+                display_text = message_text if message_text else "[No text content available from API]"
+                self.log_message_to_file(username, display_text, reply_text, timestamp)
                 
                 result = self.send_message(conversation_id, reply_text)
                 if result:
+                    print(f"   ✅ Reply sent successfully!")
                     logger.info("Reply sent successfully")
                 else:
+                    print(f"   ❌ Failed to send reply")
                     logger.error("Failed to send reply")
                 
                 # Mark message as processed
                 self.processed_messages.add(message_id)
+                print(f"   📝 Message marked as processed")
     
     def start_polling(self):
         """Start polling for messages"""
