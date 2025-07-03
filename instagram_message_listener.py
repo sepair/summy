@@ -950,13 +950,82 @@ def webhook_info():
         'webhook_url': webhook_url,
         'verify_token': WEBHOOK_VERIFY_TOKEN,
         'app_secret': APP_SECRET[:8] + "..." if APP_SECRET else "Not configured",
+        'webhook_status': 'Active and ready for Instagram verification',
+        'verification_test': f"{webhook_url}?hub.mode=subscribe&hub.verify_token={WEBHOOK_VERIFY_TOKEN}&hub.challenge=test123",
         'instructions': {
             'step_1': f"Use this webhook URL: {webhook_url}",
             'step_2': f"Use this verify token: {WEBHOOK_VERIFY_TOKEN}",
             'step_3': "Configure in Instagram Developer Console",
-            'step_4': "Subscribe to 'messages' events"
+            'step_4': "Subscribe to 'messages' events",
+            'note': "The webhook returns 'Forbidden' when accessed directly - this is normal security behavior"
         }
     }), 200
+
+@app.route('/webhook-status', methods=['GET'])
+def webhook_status():
+    """Display webhook status page"""
+    webhook_url = "https://summy-9f6d7e440dad.herokuapp.com/webhook"
+    
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Instagram Webhook Status</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }}
+            .container {{ background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+            .status {{ padding: 15px; margin: 10px 0; border-radius: 5px; }}
+            .success {{ background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }}
+            .info {{ background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }}
+            .warning {{ background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }}
+            code {{ background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-family: monospace; }}
+            .config-box {{ background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔗 Instagram Webhook Status</h1>
+            
+            <div class="status success">
+                ✅ <strong>Webhook Endpoint Active</strong><br>
+                Your webhook is running and ready to receive Instagram messages.
+            </div>
+            
+            <div class="status info">
+                ℹ️ <strong>Security Note</strong><br>
+                The webhook URL returns "Forbidden" when accessed directly - this is normal security behavior.
+                Instagram will provide the correct verification parameters.
+            </div>
+            
+            <div class="config-box">
+                <h3>📋 Configuration Details:</h3>
+                <p><strong>Webhook URL:</strong><br><code>{webhook_url}</code></p>
+                <p><strong>Verify Token:</strong><br><code>{WEBHOOK_VERIFY_TOKEN}</code></p>
+                <p><strong>App Secret:</strong><br><code>{APP_SECRET[:8]}...</code></p>
+            </div>
+            
+            <div class="status warning">
+                ⚠️ <strong>Next Steps</strong><br>
+                Configure this webhook in your Instagram Developer Console to start receiving messages.
+            </div>
+            
+            <h3>🧪 Test Verification:</h3>
+            <p>Test the webhook verification (this should return the challenge):</p>
+            <p><a href="{webhook_url}?hub.mode=subscribe&hub.verify_token={WEBHOOK_VERIFY_TOKEN}&hub.challenge=test123" target="_blank">
+                Test Webhook Verification
+            </a></p>
+            
+            <h3>📊 Monitoring:</h3>
+            <ul>
+                <li><a href="/">Main Console</a></li>
+                <li><a href="/webhook-events">Webhook Events</a></li>
+                <li><a href="/health">Health Check</a></li>
+                <li><a href="/messages">Messages Log</a></li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    """
 
 @app.route('/webhook-events', methods=['GET'])
 def webhook_events():
