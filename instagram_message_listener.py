@@ -16,7 +16,7 @@ app = Flask(__name__)
 # Instagram Messaging API configuration (uses Facebook Graph API)
 ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN')  # This should be a Page Access Token
 APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET')
-PAGE_ID = os.getenv('INSTAGRAM_BUSINESS_ACCOUNT_ID')  # This should be the Facebook Page ID
+IG_BUSINESS_ID = os.getenv('INSTAGRAM_BUSINESS_ACCOUNT_ID')  # Instagram Business Account ID
 WEBHOOK_VERIFY_TOKEN = "summy_webhook_verify_token_2025"
 
 # In-memory storage
@@ -76,11 +76,11 @@ def get_user_info(user_id):
 def get_conversations():
     """Get conversations from Facebook Graph API (Instagram Messaging)"""
     try:
-        if not PAGE_ID:
-            print("❌ PAGE_ID not configured")
+        if not IG_BUSINESS_ID:
+            print("❌ IG_BUSINESS_ID not configured")
             return []
             
-        url = f"https://graph.facebook.com/v19.0/{PAGE_ID}/conversations"
+        url = f"https://graph.facebook.com/v19.0/{IG_BUSINESS_ID}/conversations"
         params = {
             'access_token': ACCESS_TOKEN,
             'fields': 'id,participants,updated_time'
@@ -96,27 +96,28 @@ def get_conversations():
         return []
 
 def send_message(recipient_id, message_text):
-    """Send message via Facebook Graph API (Instagram Messaging)"""
+    """Send message via Instagram Messaging API (Facebook Graph API)"""
     try:
-        if not PAGE_ID:
-            print("❌ PAGE_ID not configured")
+        if not IG_BUSINESS_ID:
+            print("❌ IG_BUSINESS_ID not configured")
             return None
             
-        url = f"https://graph.facebook.com/v19.0/{PAGE_ID}/messages"
+        url = f"https://graph.facebook.com/v19.0/{IG_BUSINESS_ID}/messages"
         data = {
-            'recipient': {'id': recipient_id},
-            'message': {'text': message_text},
-            'access_token': ACCESS_TOKEN
+            "messaging_product": "instagram",
+            "recipient": {"id": recipient_id},
+            "message": {"text": message_text},
+            "access_token": ACCESS_TOKEN
         }
         response = requests.post(url, json=data)
         if response.status_code == 200:
-            print(f"✅ Message sent to user {recipient_id}")
+            print(f"✅ Instagram message sent to user {recipient_id}")
             return response.json()
         else:
-            print(f"❌ Failed to send message: {response.status_code} - {response.text}")
+            print(f"❌ Failed to send Instagram message: {response.status_code} - {response.text}")
             return None
     except Exception as e:
-        print(f"❌ Failed to send message to {recipient_id}: {e}")
+        print(f"❌ Failed to send Instagram message to {recipient_id}: {e}")
         return None
 
 def generate_auto_reply(username):
