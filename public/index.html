@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Messages - get_voyage</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📱 Instagram Messages</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Connecting...</span>
+                </div>
+                <div class="stats">
+                    <span id="message-count">0</span> messages
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="messages-container">
+                <div class="messages-header">
+                    <h2>Recent Messages</h2>
+                    <button id="refresh-btn" class="refresh-btn">🔄 Refresh</button>
+                </div>
+                
+                <div id="messages-list" class="messages-list">
+                    <div class="loading">Loading messages...</div>
+                </div>
+            </div>
+
+            <div class="webhook-info">
+                <h3>Webhook Configuration</h3>
+                <div class="config-item">
+                    <label>Webhook URL:</label>
+                    <code>https://summy-9f6d7e440dad.herokuapp.com/webhook</code>
+                </div>
+                <div class="config-item">
+                    <label>Verify Token:</label>
+                    <code>summy_webhook_verify_token_2025</code>
+                </div>
+                <div class="webhook-events">
+                    <h4>Recent Webhook Events</h4>
+                    <div id="webhook-events-list" class="webhook-events-list">
+                        <div class="loading">Loading events...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
