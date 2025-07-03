@@ -259,7 +259,7 @@ class InstagramMessagingBot:
         while self.running:
             try:
                 self.process_new_messages()
-                time.sleep(5)  # Check every 5 seconds
+                time.sleep(1)  # Check every 1 second
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
                 time.sleep(10)  # Wait longer on error
@@ -474,7 +474,7 @@ def landing_page():
                     <span class="log-timestamp">[SYSTEM]</span> Connecting to Instagram Messaging API...
                 </div>
                 <div class="log-entry log-info">
-                    <span class="log-timestamp">[SYSTEM]</span> Polling started - checking every 5 seconds
+                    <span class="log-timestamp">[SYSTEM]</span> Polling started - checking every 1 second
                 </div>
                 <div class="log-entry log-polling">
                     <span class="log-timestamp">[POLL]</span> Waiting for messages... <span class="cursor">_</span>
