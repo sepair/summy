@@ -165,19 +165,29 @@ class InstagramMessagingBot:
     
     def process_new_messages(self):
         """Check for new messages and respond"""
+        print("=" * 80)
+        print("🔍 CHECKING FOR NEW MESSAGES...")
         logger.info("Checking for new messages...")
         
         conversations = self.get_conversations()
+        print(f"📋 Found {len(conversations)} conversations")
         logger.info(f"Found {len(conversations)} conversations")
         
         for conversation in conversations:
             conversation_id = conversation['id']
+            print(f"\n💬 Checking conversation: {conversation_id}")
             messages = self.get_conversation_messages(conversation_id)
             
+            print(f"📨 Found {len(messages)} messages in this conversation")
             logger.info(f"Conversation {conversation_id}: Found {len(messages)} messages")
             
             # Debug: Log all messages in this conversation
             for i, message in enumerate(messages):
+                print(f"  Message {i+1}:")
+                print(f"    ID: {message.get('id')}")
+                print(f"    From: {message.get('from', {})}")
+                print(f"    Text: '{message.get('message', 'No text')}'")
+                print(f"    Created: {message.get('created_time', 'No time')}")
                 logger.info(f"Message {i+1}: ID={message.get('id')}, From={message.get('from', {})}, Message={message.get('message', 'No text')}")
             
             for message in messages:
