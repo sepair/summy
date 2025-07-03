@@ -1,1 +1,1 @@
-web: python instagram_message_listener.py
+web: gunicorn instagram_message_listener:app
