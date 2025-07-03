@@ -1,1 +1,1 @@
-web: node server.js
+web: python instagram_message_listener.py
