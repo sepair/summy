@@ -34,7 +34,8 @@ class InstagramMessagingBot:
         self.processed_messages = set()  # Track processed message IDs
         self.running = False
         self.live_logs = []  # Store live logs for web display
-        self.max_logs = 50  # Keep only last 50 log entries
+        self.max_logs = 100  # Keep only last 100 log entries
+        self.webhook_events = []  # Store webhook events for real-time display
         
     def get_conversations(self):
         """Get list of conversations"""
@@ -853,45 +854,91 @@ def webhook_receive():
         payload = request.get_data()
         signature = request.headers.get('X-Hub-Signature-256', '')
         
-        logger.info(f"Webhook received: signature={signature}")
-        logger.info(f"Webhook payload: {payload.decode('utf-8')}")
+        # Log webhook activity for real-time display
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        webhook_event = {
+            'timestamp': timestamp,
+            'type': 'webhook_received',
+            'signature': signature[:20] + "..." if signature else "None",
+            'payload_size': len(payload),
+            'status': 'processing'
+        }
+        bot.webhook_events.append(webhook_event)
+        
+        print(f"🔔 WEBHOOK RECEIVED at {timestamp}")
+        print(f"   Signature: {signature[:20]}..." if signature else "   No signature")
+        print(f"   Payload size: {len(payload)} bytes")
+        
+        logger.info(f"🔔 WEBHOOK RECEIVED: signature={signature}")
+        logger.info(f"🔔 WEBHOOK PAYLOAD: {payload.decode('utf-8')}")
         
         # Verify signature
         if not verify_webhook_signature(payload, signature):
+            print(f"   ❌ SIGNATURE VERIFICATION FAILED")
             logger.error("Webhook signature verification failed")
+            webhook_event['status'] = 'signature_failed'
             return 'Unauthorized', 401
+        
+        print(f"   ✅ Signature verified successfully")
         
         # Parse the JSON payload
         data = request.get_json()
         
         if not data:
+            print(f"   ❌ No JSON data in webhook")
             logger.error("No JSON data in webhook")
+            webhook_event['status'] = 'no_json'
             return 'Bad Request', 400
         
-        logger.info(f"Webhook data: {json.dumps(data, indent=2)}")
+        print(f"   📋 JSON data parsed successfully")
+        logger.info(f"🔔 WEBHOOK DATA: {json.dumps(data, indent=2)}")
+        
+        webhook_event['data'] = data
+        webhook_event['status'] = 'processing_messages'
         
         # Process webhook entries
+        messages_processed = 0
         for entry in data.get('entry', []):
+            print(f"   📨 Processing entry: {entry.get('id', 'unknown')}")
+            
             # Check for messaging events
             if 'messaging' in entry:
                 for messaging_event in entry['messaging']:
                     if 'message' in messaging_event:
+                        print(f"   💬 Found message in messaging event")
                         # Process the message
                         process_webhook_message(messaging_event['message'])
+                        messages_processed += 1
             
             # Check for changes (alternative format)
             elif 'changes' in entry:
                 for change in entry['changes']:
                     if change.get('field') == 'messages':
+                        print(f"   💬 Found message in changes")
                         value = change.get('value', {})
                         if 'messages' in value:
                             for message in value['messages']:
                                 process_webhook_message(message)
+                                messages_processed += 1
+        
+        webhook_event['messages_processed'] = messages_processed
+        webhook_event['status'] = 'completed'
+        
+        print(f"   ✅ Webhook processing completed - {messages_processed} messages processed")
+        logger.info(f"🔔 WEBHOOK COMPLETED: {messages_processed} messages processed")
+        
+        # Keep only last 50 webhook events
+        if len(bot.webhook_events) > 50:
+            bot.webhook_events = bot.webhook_events[-50:]
         
         return 'OK', 200
         
     except Exception as e:
+        print(f"   ❌ ERROR processing webhook: {e}")
         logger.error(f"Error processing webhook: {e}")
+        if 'webhook_event' in locals():
+            webhook_event['status'] = 'error'
+            webhook_event['error'] = str(e)
         return 'Error', 500
 
 @app.route('/webhook-info', methods=['GET'])
@@ -910,6 +957,49 @@ def webhook_info():
             'step_4': "Subscribe to 'messages' events"
         }
     }), 200
+
+@app.route('/webhook-events', methods=['GET'])
+def webhook_events():
+    """Get recent webhook events for real-time display"""
+    return jsonify({
+        'webhook_events': bot.webhook_events,
+        'total_events': len(bot.webhook_events),
+        'last_event': bot.webhook_events[-1] if bot.webhook_events else None
+    }), 200
+
+@app.route('/test-webhook', methods=['POST'])
+def test_webhook():
+    """Test endpoint to simulate a webhook call"""
+    try:
+        test_data = {
+            "entry": [{
+                "id": "test_entry",
+                "messaging": [{
+                    "message": {
+                        "id": "test_message_" + str(int(time.time())),
+                        "from": {"id": "test_user_123"},
+                        "message": "Test message from webhook",
+                        "created_time": datetime.now().isoformat()
+                    }
+                }]
+            }]
+        }
+        
+        print(f"🧪 TEST WEBHOOK TRIGGERED")
+        logger.info(f"🧪 TEST WEBHOOK: {json.dumps(test_data, indent=2)}")
+        
+        # Process the test webhook
+        for entry in test_data.get('entry', []):
+            if 'messaging' in entry:
+                for messaging_event in entry['messaging']:
+                    if 'message' in messaging_event:
+                        process_webhook_message(messaging_event['message'])
+        
+        return jsonify({'status': 'test_completed', 'data': test_data}), 200
+        
+    except Exception as e:
+        logger.error(f"Error in test webhook: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     # Check if required environment variables are set
