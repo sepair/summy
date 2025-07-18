@@ -174,14 +174,14 @@ def process_webhook_message(messaging_event):
     except Exception as e:
         print(f"❌ Error processing webhook message: {e}")
 
-# Webhook monitor HTML template
-WEBHOOK_MONITOR_HTML = """
+# Simple message display HTML template
+SIMPLE_MESSAGE_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Webhook Monitor</title>
+    <title>get_voyage Instagram Messages</title>
     <style>
         * {
             margin: 0;
@@ -190,180 +190,239 @@ WEBHOOK_MONITOR_HTML = """
         }
 
         body {
-            font-family: 'Courier New', monospace;
-            background: #000;
-            color: #00ff00;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            color: #333;
             padding: 20px;
-            line-height: 1.4;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
 
         .header {
-            border-bottom: 1px solid #00ff00;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
         }
 
         .header h1 {
-            color: #00ff00;
-            font-size: 18px;
-        }
-
-        .webhook-log {
-            height: 80vh;
-            overflow-y: auto;
-            background: #000;
-            border: 1px solid #00ff00;
-            padding: 15px;
-            font-size: 14px;
-        }
-
-        .log-entry {
+            font-size: 28px;
             margin-bottom: 8px;
-            padding: 4px 0;
-            border-bottom: 1px dotted #003300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .messages-container {
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .message {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-left: 4px solid #667eea;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .username {
+            font-weight: bold;
+            color: #667eea;
         }
 
         .timestamp {
-            color: #666;
+            font-size: 12px;
+            color: #6c757d;
         }
 
-        .webhook-received {
-            color: #ffff00;
+        .message-text {
+            color: #333;
+            margin-bottom: 8px;
         }
 
-        .message-processed {
-            color: #00ff00;
+        .reply-text {
+            background: #e3f2fd;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            color: #1976d2;
+            border-left: 3px solid #1976d2;
         }
 
-        .error {
-            color: #ff0000;
+        .no-messages {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
         }
 
-        .info {
-            color: #00aaff;
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px;
+            transition: background 0.3s;
         }
 
-        .cursor {
-            animation: blink 1s infinite;
+        .refresh-btn:hover {
+            background: #5a6fd8;
         }
 
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-
-        .status-line {
-            position: fixed;
-            bottom: 10px;
-            left: 20px;
-            right: 20px;
-            background: #000;
-            border-top: 1px solid #00ff00;
+        .status {
+            text-align: center;
             padding: 10px;
-            color: #00ff00;
+            background: #e8f5e8;
+            color: #2e7d32;
+            border-radius: 6px;
+            margin: 20px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>INSTAGRAM WEBHOOK MONITOR - LIVE UPDATES</h1>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>📱 get_voyage Instagram Messages</h1>
+            <p>Messages received by @get_voyage on Instagram</p>
+        </div>
 
-    <div class="webhook-log" id="webhook-log">
-        <div class="log-entry info">
-            <span class="timestamp">[SYSTEM]</span> Webhook monitor initialized - waiting for Instagram messages...
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number" id="total-messages">{{ total_messages }}</div>
+                <div class="stat-label">Total Messages</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="today-messages">{{ today_messages }}</div>
+                <div class="stat-label">Today</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="status-indicator">🟢</div>
+                <div class="stat-label">Status</div>
+            </div>
         </div>
-        <div class="log-entry info">
-            <span class="timestamp">[SYSTEM]</span> Listening on: https://summy-9f6d7e440dad.herokuapp.com/webhook
-        </div>
-        <div class="log-entry info">
-            <span class="timestamp">[READY]</span> Monitoring webhook events <span class="cursor">_</span>
-        </div>
-    </div>
 
-    <div class="status-line">
-        STATUS: <span id="status">MONITORING</span> | EVENTS: <span id="event-count">{{ event_count }}</span> | MESSAGES: <span id="message-count">{{ message_count }}</span> | <span id="current-time"></span>
+        <div class="messages-container" id="messages-container">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="message">
+                    <div class="message-header">
+                        <span class="username">@{{ message.from }}</span>
+                        <span class="timestamp">{{ message.timestamp }}</span>
+                    </div>
+                    <div class="message-text">{{ message.message }}</div>
+                    <div class="reply-text">🤖 {{ message.reply }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-messages">
+                    <h3>📭 No messages yet</h3>
+                    <p>Messages from Instagram will appear here when received</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="text-align: center; padding: 20px;">
+            <button class="refresh-btn" onclick="loadMessages()">🔄 Refresh Messages</button>
+        </div>
+
+        <div class="status" id="status">
+            ✅ Bot is running and monitoring for new messages
+        </div>
     </div>
 
     <script>
-        let eventCount = {{ event_count }};
-        let messageCount = {{ message_count }};
-
-        function updateTime() {
-            const now = new Date();
-            document.getElementById('current-time').textContent = now.toLocaleTimeString();
-        }
-
-        function addLog(type, message) {
-            const log = document.getElementById('webhook-log');
-            const timestamp = new Date().toLocaleTimeString();
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
-            log.appendChild(entry);
-            log.scrollTop = log.scrollHeight;
-
-            // Keep only last 100 entries
-            while (log.children.length > 100) {
-                log.removeChild(log.firstChild);
-            }
-        }
-
-        async function checkWebhookEvents() {
+        async function loadMessages() {
             try {
-                const response = await fetch('/api/webhook-events');
+                const response = await fetch('/api/messages');
                 const data = await response.json();
                 
-                if (data.webhook_events && data.webhook_events.length > eventCount) {
-                    const newEvents = data.webhook_events.slice(eventCount);
-                    
-                    for (const event of newEvents) {
-                        addLog('webhook-received', `🔔 WEBHOOK RECEIVED - ${event.payload_size || 'unknown'} bytes - Status: ${event.status || 'processed'}`);
-                        
-                        if (event.messages_processed > 0) {
-                            addLog('message-processed', `📨 ${event.messages_processed} message(s) processed`);
-                            messageCount += event.messages_processed;
-                        }
-                        
-                        eventCount++;
-                    }
-                    
-                    document.getElementById('event-count').textContent = eventCount;
-                    document.getElementById('message-count').textContent = messageCount;
+                const container = document.getElementById('messages-container');
+                
+                if (data.messages && data.messages.length > 0) {
+                    container.innerHTML = data.messages.map(message => `
+                        <div class="message">
+                            <div class="message-header">
+                                <span class="username">@${message.from}</span>
+                                <span class="timestamp">${message.timestamp}</span>
+                            </div>
+                            <div class="message-text">${message.message}</div>
+                            <div class="reply-text">🤖 ${message.reply}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="no-messages">
+                            <h3>📭 No messages yet</h3>
+                            <p>Messages from Instagram will appear here when received</p>
+                        </div>
+                    `;
                 }
                 
-                // Check health for total message count
-                const healthResponse = await fetch('/health');
-                const healthData = await healthResponse.json();
-                if (healthData.processed_messages !== undefined) {
-                    messageCount = healthData.processed_messages;
-                    document.getElementById('message-count').textContent = messageCount;
-                }
+                // Update stats
+                document.getElementById('total-messages').textContent = data.messages ? data.messages.length : 0;
+                
+                // Update status
+                document.getElementById('status').innerHTML = '✅ Bot is running and monitoring for new messages';
+                document.getElementById('status-indicator').textContent = '🟢';
                 
             } catch (error) {
-                addLog('error', `❌ Error checking webhook events: ${error.message}`);
-                document.getElementById('status').textContent = 'ERROR';
+                console.error('Error loading messages:', error);
+                document.getElementById('status').innerHTML = '❌ Error loading messages';
+                document.getElementById('status-indicator').textContent = '🔴';
             }
         }
 
-        // Initialize
-        updateTime();
-        checkWebhookEvents();
+        // Load messages on page load
+        loadMessages();
 
-        // Set intervals
-        setInterval(updateTime, 1000);
-        // Removed automatic polling to reduce console noise
-        // setInterval(checkWebhookEvents, 2000);
-
-        // Manual refresh button instead of auto-polling
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'r' || e.key === 'R') {
-                checkWebhookEvents();
-            }
-        });
-
-        // Add some initial activity
-        setTimeout(() => addLog('info', '✅ Webhook monitor ready - send messages to get_voyage Instagram (Press R to refresh)'), 2000);
+        // Auto-refresh every 30 seconds
+        setInterval(loadMessages, 30000);
     </script>
 </body>
 </html>
@@ -371,10 +430,41 @@ WEBHOOK_MONITOR_HTML = """
 
 @app.route('/')
 def home():
-    """Webhook monitor homepage"""
-    return render_template_string(WEBHOOK_MONITOR_HTML, 
-                                event_count=len(webhook_events), 
-                                message_count=len(processed_messages))
+    """Simple message display homepage"""
+    # Get messages from the API
+    try:
+        if os.path.exists('messages.txt'):
+            with open('messages.txt', 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            lines = [line for line in content.strip().split('\n') if line.strip()]
+            messages = []
+            
+            for line in lines:
+                # Parse log format: [timestamp] FROM: username | MESSAGE: text | REPLY: reply
+                import re
+                match = re.match(r'\[(.*?)\] FROM: (.*?) \| MESSAGE: (.*?) \| REPLY: (.*)', line)
+                if match:
+                    messages.append({
+                        'timestamp': match.group(1),
+                        'from': match.group(2),
+                        'message': match.group(3),
+                        'reply': match.group(4)
+                    })
+        else:
+            messages = []
+    except Exception as e:
+        print(f"Error loading messages: {e}")
+        messages = []
+    
+    # Count today's messages
+    today = datetime.now().strftime('%Y-%m-%d')
+    today_messages = len([m for m in messages if m['timestamp'].startswith(today)])
+    
+    return render_template_string(SIMPLE_MESSAGE_HTML, 
+                                messages=messages,
+                                total_messages=len(messages),
+                                today_messages=today_messages)
 
 @app.route('/webhook', methods=['GET'])
 def webhook_verify():
@@ -533,6 +623,24 @@ def debug():
         'webhook_events_count': len(webhook_events),
         'processed_messages_count': len(processed_messages),
         'recent_webhook_events': webhook_events[-3:] if webhook_events else []
+    })
+
+@app.route('/test-message')
+def test_message():
+    """Test endpoint to simulate a message"""
+    test_username = "test_user"
+    test_message = "This is a test message from the bot"
+    test_reply = "Hi test_user! Thanks for your message. I've received it and will get back to you soon! 🤖"
+    
+    # Log the test message
+    log_message(test_username, test_message, test_reply)
+    
+    return jsonify({
+        'status': 'success',
+        'message': 'Test message logged successfully',
+        'username': test_username,
+        'message_text': test_message,
+        'reply': test_reply
     })
 
 if __name__ == '__main__':

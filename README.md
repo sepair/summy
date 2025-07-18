@@ -8,10 +8,11 @@ A simple Instagram bot that automatically replies to direct messages using the I
 
 ## 📱 What It Does
 
-- Polls Instagram conversations every 5 seconds for new messages
+- Receives Instagram direct messages via webhooks
 - Automatically replies with a friendly message to any new message
 - Works with Instagram Business/Creator accounts
-- Uses Instagram Messaging API (not webhooks)
+- Uses Instagram Messaging API with webhook integration
+- Simple, clean frontend to view received messages
 
 ## 🤖 Bot Response
 
@@ -64,19 +65,19 @@ Required environment variables (configured in `.env`):
 
 ## 🔄 How It Works
 
-1. **Background Polling**: Bot runs a background thread that checks for new messages every 5 seconds
-2. **Conversation Detection**: Fetches all conversations using Instagram Messaging API
-3. **Message Processing**: Checks each conversation for new messages
-4. **Auto-Reply**: Sends generic reply to any new incoming message
-5. **Duplicate Prevention**: Tracks processed message IDs to avoid duplicate replies
+1. **Webhook Reception**: Instagram sends webhook events when new messages arrive
+2. **Message Processing**: Bot processes incoming webhook messages
+3. **Auto-Reply**: Sends friendly reply to any new incoming message
+4. **Message Logging**: All conversations are logged to `messages.txt`
+5. **Frontend Display**: Simple web interface shows all received messages
 
 ## 🔍 Monitoring
 
 ### Check Bot Status
 The `/health` endpoint shows:
 - Bot running status
-- Polling status
 - Number of processed messages
+- Webhook event count
 
 ### Heroku Logs
 ```bash
@@ -85,12 +86,10 @@ heroku logs --tail --app summy
 
 Look for log messages like:
 ```
-Starting Instagram message polling...
-Checking for new messages...
-Found X conversations
-New message from [USER_ID]: [MESSAGE]
-Sending reply: Hi [username]! Thanks for your message...
-Reply sent successfully
+🔔 WEBHOOK RECEIVED at [timestamp]
+📨 Processing message from [USER_ID]: [MESSAGE]
+✅ Reply sent successfully!
+📝 Message logged: [username]
 ```
 
 ## 🚀 Deployment
@@ -100,10 +99,9 @@ The app is automatically deployed to Heroku when changes are pushed to the main 
 ## 📁 Project Structure
 
 ```
-├── instagram_message_listener.py  # Main Flask app with polling bot
+├── instagram_message_listener.py  # Main Flask app with webhook bot
 ├── requirements.txt              # Python dependencies
 ├── Procfile                     # Heroku deployment config
-├── runtime.txt                  # Python version
 ├── .env                        # Environment variables
 └── README.md                   # This file
 ```
@@ -117,20 +115,20 @@ The app is automatically deployed to Heroku when changes are pushed to the main 
 - `GET /messages` - View all logged messages in browser
 - `GET /messages/download` - Download messages log file
 
-## ⚡ Key Differences from Webhook Approach
+## 🎨 Frontend Features
 
-### Instagram Messaging API (Current)
-✅ **Polling-based**: Checks for messages every 5 seconds
-✅ **Direct API access**: Uses `graph.instagram.com` endpoints
-✅ **No webhook setup**: No need for webhook configuration
-✅ **Real-time-ish**: 5-second delay maximum
-✅ **Simpler setup**: Just need API access token
+### Simple Message Display
+✅ **Clean Interface**: Modern, responsive design
+✅ **Message History**: View all received messages
+✅ **Real-time Updates**: Auto-refresh every 30 seconds
+✅ **Statistics**: Total messages and today's count
+✅ **Easy Testing**: `/test-message` endpoint for testing
 
-### Webhook Approach (Previous)
-❌ **Event-driven**: Requires webhook configuration
-❌ **Complex setup**: Facebook app, webhook verification, etc.
-❌ **Development mode issues**: Only works with test users
-❌ **More dependencies**: Requires proper Facebook app review
+### Message Format
+- **Username**: Shows who sent the message
+- **Timestamp**: When the message was received
+- **Original Message**: What the user sent
+- **Bot Reply**: The automatic response sent
 
 ## 🔧 Troubleshooting
 
@@ -150,4 +148,4 @@ The app is automatically deployed to Heroku when changes are pushed to the main 
 
 ---
 
-**Status**: ✅ Live with Instagram Messaging API polling (no webhooks)
+**Status**: ✅ Live with simplified frontend and webhook processing
