@@ -174,14 +174,14 @@ def process_webhook_message(messaging_event):
     except Exception as e:
         print(f"❌ Error processing webhook message: {e}")
 
-# Simple message display HTML template
-SIMPLE_MESSAGE_HTML = """
+# Minimal white background HTML template
+MINIMAL_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>get_voyage Instagram Messages</title>
+    <title>Instagram Messages</title>
     <style>
         * {
             margin: 0;
@@ -190,190 +190,53 @@ SIMPLE_MESSAGE_HTML = """
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9fa;
-            color: #333;
-            padding: 20px;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 16px;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .stat {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .stat-label {
+            color: black;
+            font-family: monospace;
             font-size: 14px;
-            color: #6c757d;
-            margin-top: 4px;
-        }
-
-        .messages-container {
+            line-height: 1.4;
             padding: 20px;
-            max-height: 600px;
-            overflow-y: auto;
         }
 
         .message {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-            border-left: 4px solid #667eea;
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
         }
 
-        .message-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
+        .timestamp {
+            color: #666;
+            font-size: 12px;
         }
 
         .username {
             font-weight: bold;
-            color: #667eea;
-        }
-
-        .timestamp {
-            font-size: 12px;
-            color: #6c757d;
         }
 
         .message-text {
-            color: #333;
-            margin-bottom: 8px;
+            margin: 5px 0;
         }
 
-        .reply-text {
-            background: #e3f2fd;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 14px;
-            color: #1976d2;
-            border-left: 3px solid #1976d2;
-        }
-
-        .no-messages {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-        }
-
-        .refresh-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 20px;
-            transition: background 0.3s;
-        }
-
-        .refresh-btn:hover {
-            background: #5a6fd8;
-        }
-
-        .status {
-            text-align: center;
-            padding: 10px;
-            background: #e8f5e8;
-            color: #2e7d32;
-            border-radius: 6px;
-            margin: 20px;
-            font-size: 14px;
+        .reply {
+            color: #0066cc;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📱 get_voyage Instagram Messages</h1>
-            <p>Messages received by @get_voyage on Instagram</p>
-        </div>
-
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-number" id="total-messages">{{ total_messages }}</div>
-                <div class="stat-label">Total Messages</div>
+    <div id="messages">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="message">
+                <div class="timestamp">{{ message.timestamp }}</div>
+                <div class="username">@{{ message.from }}</div>
+                <div class="message-text">{{ message.message }}</div>
+                <div class="reply">🤖 {{ message.reply }}</div>
             </div>
-            <div class="stat">
-                <div class="stat-number" id="today-messages">{{ today_messages }}</div>
-                <div class="stat-label">Today</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number" id="status-indicator">🟢</div>
-                <div class="stat-label">Status</div>
-            </div>
-        </div>
-
-        <div class="messages-container" id="messages-container">
-            {% if messages %}
-                {% for message in messages %}
-                <div class="message">
-                    <div class="message-header">
-                        <span class="username">@{{ message.from }}</span>
-                        <span class="timestamp">{{ message.timestamp }}</span>
-                    </div>
-                    <div class="message-text">{{ message.message }}</div>
-                    <div class="reply-text">🤖 {{ message.reply }}</div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="no-messages">
-                    <h3>📭 No messages yet</h3>
-                    <p>Messages from Instagram will appear here when received</p>
-                </div>
-            {% endif %}
-        </div>
-
-        <div style="text-align: center; padding: 20px;">
-            <button class="refresh-btn" onclick="loadMessages()">🔄 Refresh Messages</button>
-        </div>
-
-        <div class="status" id="status">
-            ✅ Bot is running and monitoring for new messages
-        </div>
+            {% endfor %}
+        {% else %}
+            <div>No messages yet</div>
+        {% endif %}
     </div>
 
     <script>
@@ -382,47 +245,31 @@ SIMPLE_MESSAGE_HTML = """
                 const response = await fetch('/api/messages');
                 const data = await response.json();
                 
-                const container = document.getElementById('messages-container');
+                const container = document.getElementById('messages');
                 
                 if (data.messages && data.messages.length > 0) {
                     container.innerHTML = data.messages.map(message => `
                         <div class="message">
-                            <div class="message-header">
-                                <span class="username">@${message.from}</span>
-                                <span class="timestamp">${message.timestamp}</span>
-                            </div>
+                            <div class="timestamp">${message.timestamp}</div>
+                            <div class="username">@${message.from}</div>
                             <div class="message-text">${message.message}</div>
-                            <div class="reply-text">🤖 ${message.reply}</div>
+                            <div class="reply">🤖 ${message.reply}</div>
                         </div>
                     `).join('');
                 } else {
-                    container.innerHTML = `
-                        <div class="no-messages">
-                            <h3>📭 No messages yet</h3>
-                            <p>Messages from Instagram will appear here when received</p>
-                        </div>
-                    `;
+                    container.innerHTML = '<div>No messages yet</div>';
                 }
-                
-                // Update stats
-                document.getElementById('total-messages').textContent = data.messages ? data.messages.length : 0;
-                
-                // Update status
-                document.getElementById('status').innerHTML = '✅ Bot is running and monitoring for new messages';
-                document.getElementById('status-indicator').textContent = '🟢';
                 
             } catch (error) {
                 console.error('Error loading messages:', error);
-                document.getElementById('status').innerHTML = '❌ Error loading messages';
-                document.getElementById('status-indicator').textContent = '🔴';
             }
         }
 
         // Load messages on page load
         loadMessages();
 
-        // Auto-refresh every 30 seconds
-        setInterval(loadMessages, 30000);
+        // Auto-refresh every 10 seconds
+        setInterval(loadMessages, 10000);
     </script>
 </body>
 </html>
@@ -461,10 +308,8 @@ def home():
     today = datetime.now().strftime('%Y-%m-%d')
     today_messages = len([m for m in messages if m['timestamp'].startswith(today)])
     
-    return render_template_string(SIMPLE_MESSAGE_HTML, 
-                                messages=messages,
-                                total_messages=len(messages),
-                                today_messages=today_messages)
+    return render_template_string(MINIMAL_HTML, 
+                                messages=messages)
 
 @app.route('/webhook', methods=['GET'])
 def webhook_verify():
